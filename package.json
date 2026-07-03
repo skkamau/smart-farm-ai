@@ -1,0 +1,16 @@
+{
+  "name": "smart-farm-ai-phase-1",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart Farm AI Phase 1 full-stack farm management app.",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "seed": "npm run seed --prefix server",
+    "build": "npm run build --prefix client",
+    "start": "npm start --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
