@@ -1,6 +1,7 @@
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Edit, Eye, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
 import PageHeader from "../components/PageHeader";
@@ -13,6 +14,7 @@ export default function Animals() {
   const [animals, setAnimals] = useState([]);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
   function load() {
     api.get("/animals").then(({ data }) => setAnimals(data)).catch(() => toast.error("Could not load animals"));
@@ -48,10 +50,12 @@ export default function Animals() {
           { key: "breed", label: "Breed" },
           { key: "status", label: "Status", render: (row) => <Status value={row.status} /> },
           { key: "weight", label: "Weight", render: (row) => `${row.weight || 0} kg` },
+          { key: "qrCodeId", label: "QR", render: (row) => row.qrCodeId ? <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">Ready</span> : "Pending" },
           { key: "estimatedValue", label: "Value", render: (row) => currency.format(row.estimatedValue || 0) }
         ]}
         actions={(row) => (
           <div className="flex justify-end gap-2">
+            <button className="btn-muted px-2" onClick={() => navigate(`/animals/${row._id}`)} aria-label="View animal"><Eye className="h-4 w-4" /></button>
             <button className="btn-muted px-2" onClick={() => setEditing({ ...row, dateOfBirth: inputDate(row.dateOfBirth) })} aria-label="Edit animal"><Edit className="h-4 w-4" /></button>
             <button className="btn-muted px-2 text-red-700" onClick={() => remove(row._id)} aria-label="Delete animal"><Trash2 className="h-4 w-4" /></button>
           </div>

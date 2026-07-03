@@ -5,6 +5,7 @@ import Animal from "./models/Animal.js";
 import Crop from "./models/Crop.js";
 import Transaction from "./models/Transaction.js";
 import User from "./models/User.js";
+import { ensureAnimalQr } from "./utils/qr.js";
 
 dotenv.config();
 
@@ -19,13 +20,14 @@ async function seed() {
     farmName: "Green Valley Farm"
   });
 
-  await Animal.insertMany([
+  const animals = await Animal.insertMany([
     { user: user._id, animalId: "COW-001", name: "Maziwa", species: "Cow", breed: "Friesian", gender: "Female", dateOfBirth: "2022-04-12", weight: 418, location: "Dairy Pen A", status: "Healthy", estimatedValue: 92000, notes: "High milk producer" },
     { user: user._id, animalId: "COW-002", name: "Lulu", species: "Cow", breed: "Ayrshire", gender: "Female", dateOfBirth: "2021-11-20", weight: 392, location: "Dairy Pen A", status: "Pregnant", estimatedValue: 88000, notes: "Expected calving in August" },
     { user: user._id, animalId: "GOAT-014", name: "Kito", species: "Goat", breed: "Boer", gender: "Male", dateOfBirth: "2023-01-18", weight: 54, location: "Goat Shed", status: "Healthy", estimatedValue: 24000 },
     { user: user._id, animalId: "SHP-007", name: "Nuru", species: "Sheep", breed: "Dorper", gender: "Female", dateOfBirth: "2023-08-09", weight: 43, location: "Paddock 2", status: "Sick", estimatedValue: 18000, notes: "Under observation for cough" },
     { user: user._id, animalId: "CHK-101", name: "Layer Batch 1", species: "Chicken", breed: "Rhode Island Red", gender: "Female", dateOfBirth: "2024-02-01", weight: 2, location: "Coop 1", status: "Healthy", estimatedValue: 650 }
   ]);
+  await Promise.all(animals.map((animal) => ensureAnimalQr(animal)));
 
   await Crop.insertMany([
     { user: user._id, name: "Maize", field: "North Field", plot: "N-2", area: 4.5, plantingDate: "2026-03-20", harvestDate: "2026-08-15", expectedYield: 6200, cost: 118000, revenue: 0, status: "Growing", notes: "Top dressed in June" },

@@ -2,7 +2,9 @@
 
 Phase 1 is a working full-stack farm management app with authentication, dashboard summaries, animal CRUD, crop CRUD, and income/expense tracking.
 
-Advanced items from the full brief are intentionally not included yet: QR codes, family trees, AI assistant, reports, and advanced health records.
+Phase 2 adds QR Code Animal Identification.
+
+Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, reports, and advanced health records.
 
 ## Stack
 
@@ -87,6 +89,8 @@ npm start             # start backend only
 - `POST /api/auth/login`
 - `GET /api/auth/me`
 - `GET/POST /api/animals`
+- `GET /api/animals/:id`
+- `GET /api/animals/qr/:qrCodeId`
 - `PUT/DELETE /api/animals/:id`
 - `GET/POST /api/crops`
 - `PUT/DELETE /api/crops/:id`
@@ -96,6 +100,38 @@ npm start             # start backend only
 
 All routes except register/login require a bearer token.
 
+## QR Code Animal Identification
+
+Every animal automatically receives:
+
+- `qrCodeId`
+- `qrCodeValue`
+
+The QR value points to:
+
+```text
+{CLIENT_URL}/scan/{qrCodeId}
+```
+
+Set `CLIENT_URL` in `server/.env` to the frontend URL that users should open after scanning. For local development this is usually:
+
+```text
+CLIENT_URL=http://localhost:5173
+```
+
+If Vite starts on another port because `5173` is busy, update `CLIENT_URL`, restart the API, and edit or reload animal records so QR links use the desired frontend URL.
+
+### Use QR Features
+
+1. Open `Animals`.
+2. Click the eye button beside an animal.
+3. Use the QR section to download the QR code as PNG or print the label.
+4. Open `Scan QR` from the sidebar or mobile nav.
+5. Allow camera access and scan a printed/generated animal QR code.
+6. The scanner opens the matching animal profile.
+
+Old animals without QR codes are repaired automatically when animal records are listed or opened.
+
 ## GitHub
 
 This folder is ready to commit and push.
@@ -103,7 +139,7 @@ This folder is ready to commit and push.
 ```bash
 git init
 git add .
-git commit -m "Build Smart Farm AI phase 1"
+git commit -m "Build Smart Farm AI phase 2"
 gh repo create smart-farm-ai-phase-1 --private --source=. --remote=origin --push
 ```
 
