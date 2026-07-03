@@ -1,4 +1,4 @@
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Download, Edit, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
@@ -26,6 +26,16 @@ export default function Crops() {
     load();
   }
 
+  async function downloadCropRecord(crop) {
+    const { data } = await api.get(`/reports/crop/${crop._id}/pdf`, { responseType: "blob" });
+    const url = URL.createObjectURL(data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${crop.name}-crop-record.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
       <PageHeader title="Crops" eyebrow="Fields and harvests" action={<button className="btn-primary" onClick={() => setEditing(emptyCrop)}><Plus className="h-4 w-4" /> Add crop</button>} />
@@ -43,6 +53,7 @@ export default function Crops() {
         ]}
         actions={(row) => (
           <div className="flex justify-end gap-2">
+            <button className="btn-muted px-2" onClick={() => downloadCropRecord(row)} aria-label="Download crop record"><Download className="h-4 w-4" /></button>
             <button className="btn-muted px-2" onClick={() => setEditing({ ...row, plantingDate: inputDate(row.plantingDate), harvestDate: inputDate(row.harvestDate) })} aria-label="Edit crop"><Edit className="h-4 w-4" /></button>
             <button className="btn-muted px-2 text-red-700" onClick={() => remove(row._id)} aria-label="Delete crop"><Trash2 className="h-4 w-4" /></button>
           </div>

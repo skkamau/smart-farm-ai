@@ -31,7 +31,7 @@ const animalSchema = new mongoose.Schema(
 
 animalSchema.pre("validate", function ensureQrCode(next) {
   if (!this.qrCodeId) this.qrCodeId = `QR-${randomUUID()}`;
-  if (!this.qrCodeValue) this.qrCodeValue = buildQrValue(this);
+  this.qrCodeValue = buildQrValue(this);
   next();
 });
 

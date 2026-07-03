@@ -10,8 +10,9 @@ export async function ensureAnimalQr(animal) {
     animal.qrCodeId = `QR-${randomUUID()}`;
   }
 
-  if (!animal.qrCodeValue) {
-    animal.qrCodeValue = buildQrValue(animal.qrCodeId);
+  const currentValue = buildQrValue(animal.qrCodeId);
+  if (animal.qrCodeValue !== currentValue) {
+    animal.qrCodeValue = currentValue;
   }
 
   if (animal.isModified?.("qrCodeId") || animal.isModified?.("qrCodeValue")) {

@@ -35,6 +35,16 @@ export default function AnimalProfile() {
     link.click();
   }
 
+  async function downloadAnimalRecord() {
+    const { data } = await api.get(`/reports/animal/${animal._id}/pdf`, { responseType: "blob" });
+    const url = URL.createObjectURL(data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${animal.animalId}-record.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function printQr() {
     if (!qrDataUrl) return;
     const printWindow = window.open("", "_blank", "width=520,height=680");
@@ -84,6 +94,12 @@ export default function AnimalProfile() {
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <section className="card p-5">
           <h2 className="mb-4 font-bold text-farm-950">Basic Information</h2>
+          <div className="mb-4">
+            <button className="btn-primary" onClick={downloadAnimalRecord}>
+              <Download className="h-4 w-4" />
+              Download animal record
+            </button>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Info label="Animal ID" value={animal.animalId} />
             <Info label="Species" value={animal.species} />

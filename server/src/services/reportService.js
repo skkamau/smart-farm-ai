@@ -24,6 +24,31 @@ function csvEscape(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function bullet(doc, label, value) {
+  doc.fontSize(10).text(`- ${label}: ${fmt(value) || "Not recorded"}`);
+}
+
+function section(doc, title) {
+  doc.moveDown(0.7);
+  doc.fontSize(13).fillColor("#112617").text(title, { underline: true });
+  doc.fillColor("#111827").moveDown(0.3);
+}
+
+function barChart(doc, title, values) {
+  const entries = Object.entries(values).filter(([, value]) => Number.isFinite(Number(value)));
+  if (!entries.length) return;
+  section(doc, title);
+  const max = Math.max(...entries.map(([, value]) => Math.abs(Number(value))), 1);
+  entries.forEach(([label, value]) => {
+    const width = Math.max((Math.abs(Number(value)) / max) * 220, 4);
+    doc.fontSize(9).text(`${label}: ${value}`, { continued: false });
+    const x = doc.x;
+    const y = doc.y + 2;
+    doc.rect(x, y, width, 8).fill(Number(value) < 0 ? "#b91c1c" : "#206533");
+    doc.fillColor("#111827").moveDown(0.8);
+  });
+}
+
 function toCsv(rows) {
   if (!rows.length) return "No data\n";
   const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
@@ -163,5 +188,115 @@ export async function sendPdf(res, name, rows, type) {
       doc.moveDown(0.4);
     });
   }
+  doc.end();
+}
+
+export async function sendIndividualAnimalPdf(res, user, animalId) {
+  const animal = await Animal.findOne({ _id: animalId, user }).populate("mother", "animalId name").populate("father", "animalId name").populate("children", "animalId name");
+  if (!animal) {
+    res.status(404).json({ message: "Animal not found" });
+    return;
+  }
+  const [health, vaccinations, breeding, births] = await Promise.all([
+    HealthRecord.find({ user, animal: animal._id }).sort({ recordDate: -1 }).lean(),
+    VaccinationRecord.find({ user, animal: animal._id }).sort({ nextDueDate: 1 }).lean(),
+    BreedingRecord.find({ user, $or: [{ femaleAnimal: animal._id }, { maleAnimal: animal._id }] }).populate("femaleAnimal", "animalId name").populate("maleAnimal", "animalId name").sort({ matingDate: -1 }).lean(),
+    BirthRecord.find({ user, $or: [{ mother: animal._id }, { father: animal._id }, { offspring: animal._id }] }).populate("mother", "animalId name").populate("father", "animalId name").populate("offspring", "animalId name").sort({ birthDate: -1 }).lean()
+  ]);
+
+  const doc = new PDFDocument({ margin: 42, size: "A4" });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${animal.animalId}-record.pdf"`);
+  doc.pipe(res);
+  doc.fontSize(18).text(`Animal Record - ${animal.animalId}`, { underline: true });
+  doc.moveDown();
+
+  section(doc, "Basic Details");
+  bullet(doc, "Name", animal.name);
+  bullet(doc, "Species", animal.species);
+  bullet(doc, "Breed", animal.breed);
+  bullet(doc, "Gender", animal.gender);
+  bullet(doc, "Status", animal.status);
+  bullet(doc, "Weight", `${animal.weight || 0} kg`);
+  bullet(doc, "Location", animal.location);
+  bullet(doc, "Estimated value", animal.estimatedValue);
+  bullet(doc, "Notes", animal.notes);
+
+  section(doc, "QR Code");
+  bullet(doc, "Scan link", animal.qrCodeValue);
+  if (animal.qrCodeValue) {
+    const dataUrl = await QRCode.toDataURL(animal.qrCodeValue, { width: 120, margin: 1 });
+    doc.image(Buffer.from(dataUrl.split(",")[1], "base64"), { width: 95 });
+  }
+
+  section(doc, "Family");
+  bullet(doc, "Mother", animal.mother ? `${animal.mother.animalId} - ${animal.mother.name || ""}` : "");
+  bullet(doc, "Father", animal.father ? `${animal.father.animalId} - ${animal.father.name || ""}` : "");
+  bullet(doc, "Children", (animal.children || []).map((child) => `${child.animalId} - ${child.name || ""}`).join("; "));
+
+  barChart(doc, "Record Counts", {
+    Health: health.length,
+    Vaccinations: vaccinations.length,
+    Breeding: breeding.length,
+    Births: births.length
+  });
+
+  section(doc, "Health History");
+  health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.recoveryStatus} - ${r.treatment || ""}`)) : bullet(doc, "Records", "None");
+
+  section(doc, "Vaccination History");
+  vaccinations.length ? vaccinations.forEach((r) => bullet(doc, r.vaccineName, `${r.status} - next due ${fmt(r.nextDueDate)} - batch ${r.batchNumber || ""}`)) : bullet(doc, "Records", "None");
+
+  section(doc, "Breeding History");
+  breeding.length ? breeding.forEach((r) => bullet(doc, fmt(r.matingDate), `${r.femaleAnimal?.animalId} x ${r.maleAnimal?.animalId} - ${r.pregnancyStatus} - ${r.breedingResult}`)) : bullet(doc, "Records", "None");
+
+  section(doc, "Birth History");
+  births.length ? births.forEach((r) => bullet(doc, fmt(r.birthDate), `Mother ${r.mother?.animalId}, Father ${r.father?.animalId}, Offspring ${(r.offspring || []).map((a) => a.animalId).join(", ")}`)) : bullet(doc, "Records", "None");
+
+  section(doc, "Production Records");
+  bullet(doc, "Status", "Production module not added yet");
+  doc.end();
+}
+
+export async function sendIndividualCropPdf(res, user, cropId) {
+  const crop = await Crop.findOne({ _id: cropId, user }).lean();
+  if (!crop) {
+    res.status(404).json({ message: "Crop not found" });
+    return;
+  }
+
+  const doc = new PDFDocument({ margin: 42, size: "A4" });
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${crop.name}-crop-record.pdf"`);
+  doc.pipe(res);
+  doc.fontSize(18).text(`Crop Record - ${crop.name}`, { underline: true });
+  doc.moveDown();
+
+  section(doc, "Crop Details");
+  bullet(doc, "Crop name", crop.name);
+  bullet(doc, "Field", crop.field);
+  bullet(doc, "Plot", crop.plot);
+  bullet(doc, "Area", `${crop.area || 0} acres`);
+  bullet(doc, "Planting date", fmt(crop.plantingDate));
+  bullet(doc, "Harvest date", fmt(crop.harvestDate));
+  bullet(doc, "Expected yield", crop.expectedYield);
+  bullet(doc, "Actual yield", crop.actualYield);
+  bullet(doc, "Cost", crop.cost);
+  bullet(doc, "Revenue", crop.revenue);
+  bullet(doc, "Profit/Loss", (crop.revenue || 0) - (crop.cost || 0));
+  bullet(doc, "Status", crop.status);
+  bullet(doc, "Notes", crop.notes);
+
+  barChart(doc, "Yield Chart", {
+    "Expected yield": crop.expectedYield || 0,
+    "Actual yield": crop.actualYield || 0
+  });
+
+  barChart(doc, "Financial Chart", {
+    Cost: crop.cost || 0,
+    Revenue: crop.revenue || 0,
+    "Profit/Loss": (crop.revenue || 0) - (crop.cost || 0)
+  });
+
   doc.end();
 }

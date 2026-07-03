@@ -1,12 +1,13 @@
 import { Leaf } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Auth({ mode }) {
   const isSignup = mode === "signup";
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, login, signup } = useAuth();
   const [form, setForm] = useState({ name: "", farmName: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,7 @@ export default function Auth({ mode }) {
         await login({ email: form.email, password: form.password });
       }
       toast.success(isSignup ? "Farm account created" : "Welcome back");
-      navigate("/");
+      navigate(location.state?.returnTo || "/");
     } catch (error) {
       toast.error(error.response?.data?.message || "Authentication failed");
     } finally {
