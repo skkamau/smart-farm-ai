@@ -45,8 +45,8 @@ export default function DocumentManager({ entityType, entityId }) {
   if (!entityId) return null;
 
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-      <div className="mb-3 font-bold text-farm-950">Documents & Images</div>
+    <div className="rounded-lg border border-farm-100 bg-field-cream p-4">
+      <div className="mb-3 font-black text-farm-950">Documents & Images</div>
       <form onSubmit={upload} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <input className="input" type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} />
         <input className="input" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional notes" />
@@ -57,9 +57,9 @@ export default function DocumentManager({ entityType, entityId }) {
       </form>
       <div className="mt-4 space-y-2">
         {documents.map((doc) => (
-          <div key={doc._id} className="flex flex-col justify-between gap-2 rounded-md bg-white p-3 text-sm sm:flex-row sm:items-center">
+          <div key={doc._id} className="flex flex-col justify-between gap-2 rounded-lg border border-farm-100 bg-white p-3 text-sm sm:flex-row sm:items-center">
             <div>
-              <div className="font-semibold text-slate-800">{doc.originalName}</div>
+              <div className="font-bold text-farm-950">{doc.originalName}</div>
               <div className="text-xs text-slate-500">{Math.ceil(doc.size / 1024)} KB {doc.notes ? `- ${doc.notes}` : ""}</div>
             </div>
             <div className="flex gap-2">

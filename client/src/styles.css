@@ -8,32 +8,40 @@
 
 body {
   margin: 0;
-  background: #eef4ed;
-  color: #17231a;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(6, 69, 47, 0.08) 1px, transparent 0),
+    #f6f7f1;
+  background-size: 20px 20px;
+  color: #10261b;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 @layer components {
   .card {
-    @apply rounded-lg border border-slate-200 bg-white shadow-soft;
+    @apply rounded-lg border border-farm-100 bg-white/95 shadow-soft;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-primary {
-    @apply btn bg-farm-700 text-white hover:bg-farm-500;
+    @apply btn bg-farm-800 text-white shadow-soft hover:bg-farm-700;
   }
 
   .btn-muted {
-    @apply btn border border-slate-200 bg-white text-slate-700 hover:bg-slate-50;
+    @apply btn border border-farm-100 bg-white text-farm-900 hover:bg-farm-50;
   }
 
   .input {
-    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-farm-500 focus:ring-2 focus:ring-farm-100;
+    @apply w-full rounded-md border border-farm-100 bg-white px-3 py-2 text-sm text-farm-950 outline-none transition placeholder:text-slate-400 focus:border-farm-700 focus:ring-2 focus:ring-farm-100;
   }
 
   .label {
-    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply text-[11px] font-black uppercase tracking-wide text-farm-700/70;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold;
   }
 }
