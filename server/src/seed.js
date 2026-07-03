@@ -81,6 +81,20 @@ async function seed() {
     },
     {
       user: user._id,
+      animal: animalById["SHP-007"]._id,
+      recordDate: "2026-07-02",
+      condition: "Follow-up respiratory check",
+      symptoms: "Occasional cough after treatment",
+      diagnosis: "Recovering but recurrent respiratory irritation",
+      treatment: "Extended observation and dry bedding",
+      medication: "Vitamin support",
+      dosage: "Daily for 5 days",
+      vetName: "Dr. Wanjiku",
+      recoveryStatus: "Recovering",
+      notes: "Check housing ventilation."
+    },
+    {
+      user: user._id,
       animal: animalById["COW-002"]._id,
       recordDate: "2026-06-18",
       condition: "Pregnancy check",
@@ -138,7 +152,7 @@ async function seed() {
       maleAnimal: animalById["BULL-001"]._id,
       matingDate: "2026-04-20",
       pregnancyStatus: "pregnant",
-      expectedBirthDate: "2026-08-28",
+      expectedBirthDate: "2026-07-20",
       vetNotes: "Pregnancy progressing normally.",
       breedingResult: "pending",
       notes: "Check body condition weekly."
@@ -166,12 +180,12 @@ async function seed() {
   ]);
 
   await Transaction.insertMany([
-    { user: user._id, type: "income", category: "Sales", amount: 82000, description: "Milk sales - June", transactionDate: "2026-06-30" },
-    { user: user._id, type: "income", category: "Sales", amount: 21500, description: "Egg sales - June", transactionDate: "2026-06-29" },
-    { user: user._id, type: "expense", category: "Feed", amount: 46500, description: "Dairy meal and layers mash", transactionDate: "2026-06-27" },
-    { user: user._id, type: "expense", category: "Medicine", amount: 9200, description: "Vet visit and antibiotics", transactionDate: "2026-06-25" },
-    { user: user._id, type: "expense", category: "Labour", amount: 30000, description: "Farm wages", transactionDate: "2026-06-28" },
-    { user: user._id, type: "income", category: "Crop", amount: 38000, description: "Vegetable sales", transactionDate: "2026-06-21" }
+    { user: user._id, type: "income", category: "Sales", amount: 82000, description: "Milk sales - July", transactionDate: "2026-07-02" },
+    { user: user._id, type: "income", category: "Sales", amount: 21500, description: "Egg sales - July", transactionDate: "2026-07-02" },
+    { user: user._id, type: "expense", category: "Feed", amount: 70000, description: "Dairy meal and layers mash", transactionDate: "2026-07-01" },
+    { user: user._id, type: "expense", category: "Medicine", amount: 9200, description: "Vet visit and antibiotics", transactionDate: "2026-07-01" },
+    { user: user._id, type: "expense", category: "Labour", amount: 30000, description: "Farm wages", transactionDate: "2026-07-01" },
+    { user: user._id, type: "income", category: "Crop", amount: 38000, description: "Vegetable sales", transactionDate: "2026-07-02" }
   ]);
 
   console.log("Seed complete");

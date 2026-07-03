@@ -6,6 +6,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { connectDB } from "./config/db.js";
 import animalRoutes from "./routes/animalRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import birthRoutes from "./routes/birthRoutes.js";
 import breedingRoutes from "./routes/breedingRoutes.js";
@@ -29,6 +30,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "Smart Farm AI API" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/animals", animalRoutes);
 app.use("/api/breeding-records", breedingRoutes);

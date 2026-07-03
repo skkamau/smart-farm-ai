@@ -8,6 +8,8 @@ Phase 3 adds Health, Vet Records, and Vaccination Management.
 
 Phase 4 adds Breeding, Birth Records, and Family Tree.
 
+Phase 5 adds Smart AI Recommendations and Farm Alerts using local rule-based logic.
+
 Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, and advanced reports.
 
 ## Stack
@@ -108,6 +110,9 @@ npm start             # start backend only
 - `PUT/DELETE /api/breeding-records/:id`
 - `GET/POST /api/birth-records`
 - `PUT/DELETE /api/birth-records/:id`
+- `GET /api/ai/recommendations`
+- `GET /api/ai/alerts`
+- `POST /api/ai/assistant`
 - `GET /api/dashboard`
 
 All routes except register/login require a bearer token.
@@ -196,6 +201,41 @@ Use:
 - `Animals > View` to see parents, children, siblings, offspring count, breeding records, and birth records.
 
 For family linking, create the newborn animals first in `Animals`, then select those animal IDs as offspring when creating the birth record.
+
+## Smart AI Recommendations and Alerts
+
+Phase 5 adds a local rule-based AI layer. It does not call OpenAI, Gemini, Ollama, or any paid API yet.
+
+The backend service analyzes stored farm data and detects:
+
+- overdue and upcoming vaccinations
+- sick animals
+- repeated vet cases
+- pregnant animals close to expected birth
+- animals due for breeding
+- missing/abnormal weight data signals
+- crops close to harvest
+- high expenses
+- low profit areas
+
+Dashboard recommendations appear in `Smart AI Recommendations`.
+
+Use:
+
+- `Assistant` for chat-style farm questions.
+- `Alerts` for automatic alert cards with type, priority, related item, message, suggested action, and created date.
+
+Example assistant questions:
+
+```text
+Which animals need vaccines?
+Which animals are sick?
+Which crops are ready for harvest?
+Show animals close to giving birth
+How is my profit this month?
+```
+
+The AI code lives in `server/src/services/aiService.js` so a future LLM provider can be added as a separate adapter without replacing the rules.
 
 ## GitHub
 

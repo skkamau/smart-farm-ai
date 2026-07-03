@@ -1,10 +1,12 @@
-import { Baby, BarChart3, Beef, HeartHandshake, Leaf, LogOut, Menu, QrCode, ReceiptText, ShieldPlus, Sprout, Stethoscope, X } from "lucide-react";
+import { Baby, BarChart3, Beef, Bell, Bot, HeartHandshake, Leaf, LogOut, Menu, QrCode, ReceiptText, ShieldPlus, Sprout, Stethoscope, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
+  { to: "/assistant", label: "Assistant", icon: Bot },
+  { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/animals", label: "Animals", icon: Beef },
   { to: "/scan", label: "Scan QR", icon: QrCode },
   { to: "/health", label: "Health", icon: Stethoscope },

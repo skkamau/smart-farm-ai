@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Sprout } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bot, Sprout } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
@@ -71,6 +71,19 @@ export default function Dashboard() {
         </section>
       </div>
 
+      <section className="card mt-5 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-bold text-farm-950">Smart AI Recommendations</h2>
+          <Bot className="h-5 w-5 text-farm-700" />
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {(data?.aiRecommendations || []).map((item, index) => (
+            <RecommendationCard key={`${item.type}-${index}`} item={item} />
+          ))}
+          {!data?.aiRecommendations?.length && <div className="text-sm text-slate-500">No recommendations yet.</div>}
+        </div>
+      </section>
+
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <section className="card p-5">
           <h2 className="mb-4 font-bold text-farm-950">Vaccination Alerts</h2>
@@ -133,6 +146,29 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+function RecommendationCard({ item }) {
+  return (
+    <div className="rounded-lg border border-slate-100 p-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-bold capitalize text-farm-950">{item.type}</span>
+        <PriorityBadge value={item.priority} />
+      </div>
+      <div className="font-semibold text-slate-800">{item.message}</div>
+      <div className="mt-2 text-sm text-slate-500">{item.suggestedAction}</div>
+    </div>
+  );
+}
+
+function PriorityBadge({ value }) {
+  const tones = {
+    urgent: "bg-red-100 text-red-800",
+    high: "bg-red-50 text-red-700",
+    medium: "bg-amber-50 text-amber-700",
+    low: "bg-slate-100 text-slate-700"
+  };
+  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tones[value] || tones.low}`}>{value}</span>;
 }
 
 function Signal({ icon: Icon, label, value, tone }) {

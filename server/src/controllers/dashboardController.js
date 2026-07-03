@@ -5,6 +5,7 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import { generateFarmIntelligence } from "../services/aiService.js";
 import { normalizeVaccination } from "../utils/vaccinations.js";
 
 export async function getDashboard(req, res, next) {
@@ -46,6 +47,7 @@ export async function getDashboard(req, res, next) {
     const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.status === "Healthy").length;
     const upcomingVaccinations = normalizedVaccinations.filter((record) => record.status === "upcoming").length;
     const overdueVaccinations = normalizedVaccinations.filter((record) => record.status === "overdue").length;
+    const intelligence = await generateFarmIntelligence(user);
 
     res.json({
       totals: {
@@ -76,7 +78,8 @@ export async function getDashboard(req, res, next) {
       expectedBirths,
       vaccinationAlerts: normalizedVaccinations
         .filter((record) => ["upcoming", "overdue"].includes(record.status))
-        .slice(0, 8)
+        .slice(0, 8),
+      aiRecommendations: intelligence.recommendations.slice(0, 6)
     });
   } catch (error) {
     next(error);
