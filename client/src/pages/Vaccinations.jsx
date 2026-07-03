@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import DocumentManager from "../components/DocumentManager";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { formatDate, inputDate } from "../utils";
@@ -109,6 +110,7 @@ function VaccineModal({ record, animals, onClose, onSaved }) {
           <span className="label">Notes</span>
           <textarea className="input min-h-20" value={form.notes || ""} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
         </label>
+        {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="vaccination" entityId={record._id} /></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <button type="button" className="btn-muted" onClick={onClose}>Cancel</button>
           <button className="btn-primary">Save vaccination</button>

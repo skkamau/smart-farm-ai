@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import DocumentManager from "../components/DocumentManager";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { formatDate, inputDate } from "../utils";
@@ -115,6 +116,7 @@ function HealthModal({ record, animals, onClose, onSaved }) {
           </select>
         </label>
         <TextArea label="Notes" value={form.notes || ""} onChange={(value) => setForm({ ...form, notes: value })} />
+        {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="health" entityId={record._id} /></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <button type="button" className="btn-muted" onClick={onClose}>Cancel</button>
           <button className="btn-primary">Save record</button>

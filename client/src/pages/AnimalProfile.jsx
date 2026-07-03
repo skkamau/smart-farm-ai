@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
+import DocumentManager from "../components/DocumentManager";
 import api from "../services/api";
 import { currency, formatDate } from "../utils";
 
@@ -97,6 +98,9 @@ export default function AnimalProfile() {
           <div className="mt-5 rounded-lg border border-slate-100 bg-slate-50 p-4">
             <div className="label">Notes</div>
             <p className="mt-2 text-sm text-slate-700">{animal.notes || "No notes yet."}</p>
+          </div>
+          <div className="mt-5">
+            <DocumentManager entityType="animal" entityId={animal._id} />
           </div>
         </section>
 

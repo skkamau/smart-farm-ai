@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import DocumentManager from "../components/DocumentManager";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 import api from "../services/api";
@@ -83,6 +84,7 @@ function TransactionModal({ transaction, onClose, onSaved }) {
         <Field label="Date" type="date" value={form.transactionDate} onChange={(v) => setForm({ ...form, transactionDate: v })} />
         <Field label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} required />
         <Field label="Notes" value={form.notes || ""} onChange={(v) => setForm({ ...form, notes: v })} />
+        {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="transaction" entityId={transaction._id} /></div>}
         <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary">Save transaction</button></div>
       </form>
     </CrudModal>

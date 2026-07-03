@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import DocumentManager from "../components/DocumentManager";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
@@ -78,6 +79,7 @@ function CropModal({ crop, onClose, onSaved }) {
         <Field label="Revenue" type="number" value={form.revenue} onChange={(v) => setForm({ ...form, revenue: v })} />
         <label className="space-y-1"><span className="label">Status</span><select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{["Planned", "Growing", "Ready", "Harvested"].map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="space-y-1 sm:col-span-2"><span className="label">Notes</span><textarea className="input min-h-24" value={form.notes || ""} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+        {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="crop" entityId={crop._id} /></div>}
         <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary">Save crop</button></div>
       </form>
     </CrudModal>

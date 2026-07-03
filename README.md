@@ -10,6 +10,8 @@ Phase 4 adds Breeding, Birth Records, and Family Tree.
 
 Phase 5 adds Smart AI Recommendations and Farm Alerts using local rule-based logic.
 
+Phase 6 adds Reports, Exports, and Farm Documents.
+
 Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, and advanced reports.
 
 ## Stack
@@ -113,6 +115,9 @@ npm start             # start backend only
 - `GET /api/ai/recommendations`
 - `GET /api/ai/alerts`
 - `POST /api/ai/assistant`
+- `GET /api/reports/:type/:format`
+- `GET/POST /api/documents`
+- `DELETE /api/documents/:id`
 - `GET /api/dashboard`
 
 All routes except register/login require a bearer token.
@@ -236,6 +241,39 @@ How is my profit this month?
 ```
 
 The AI code lives in `server/src/services/aiService.js` so a future LLM provider can be added as a separate adapter without replacing the rules.
+
+## Reports, Exports, and Documents
+
+Phase 6 adds a `Reports` page with export buttons for:
+
+- animal reports
+- health reports
+- vaccination reports
+- breeding reports
+- birth reports
+- crop reports
+- financial reports
+- AI recommendation reports
+
+Export formats:
+
+- PDF
+- CSV
+- Excel `.xlsx`
+
+Animal PDF reports include the animal QR code image. Animal exports include basic details, QR link, parents, children, health/vaccination/breeding/birth counts, production placeholder, and notes.
+
+Financial exports include total income, total expenses, profit/loss, expense categories, monthly summary, annual summary, and transaction rows.
+
+Document uploads are available on:
+
+- animal profiles
+- health/vet record edit forms
+- vaccination record edit forms
+- crop record edit forms
+- financial transaction edit forms
+
+Allowed upload types include PDF, JPG, PNG, WEBP, CSV, XLSX, DOC, and DOCX. Maximum upload size is 5 MB. Uploaded files are stored in `server/uploads/`, and metadata is stored in MongoDB.
 
 ## GitHub
 

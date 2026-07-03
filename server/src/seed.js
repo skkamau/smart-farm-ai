@@ -5,6 +5,7 @@ import Animal from "./models/Animal.js";
 import BirthRecord from "./models/BirthRecord.js";
 import BreedingRecord from "./models/BreedingRecord.js";
 import Crop from "./models/Crop.js";
+import Document from "./models/Document.js";
 import HealthRecord from "./models/HealthRecord.js";
 import Transaction from "./models/Transaction.js";
 import User from "./models/User.js";
@@ -24,6 +25,7 @@ async function seed() {
     VaccinationRecord.deleteMany({}),
     BreedingRecord.deleteMany({}),
     BirthRecord.deleteMany({})
+    , Document.deleteMany({})
   ]);
 
   const user = await User.create({
