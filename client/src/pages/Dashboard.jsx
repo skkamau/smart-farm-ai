@@ -26,6 +26,8 @@ export default function Dashboard() {
         <StatCard label="Crops" value={totals.crops ?? "..."} detail={`${totals.readyCrops || 0} ready for harvest`} tone="slate" />
         <StatCard label="Income" value={currency.format(totals.income || 0)} detail="Recorded farm income" />
         <StatCard label="Profit/Loss" value={currency.format(totals.profitLoss || 0)} detail="Income minus expenses" tone={(totals.profitLoss || 0) >= 0 ? "green" : "red"} />
+        <StatCard label="Pregnant" value={totals.pregnantAnimals || 0} detail={`${totals.expectedBirths || 0} births expected`} tone="amber" />
+        <StatCard label="Due for breeding" value={totals.dueForBreeding || 0} detail="Healthy female animals" tone="slate" />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
@@ -99,6 +101,33 @@ export default function Dashboard() {
               </div>
             ))}
             {!data?.recentVetCases?.length && <div className="text-sm text-slate-500">No vet cases recorded.</div>}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Expected Births</h2>
+          <div className="space-y-3">
+            {(data?.expectedBirths || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-3">
+                <div className="font-semibold text-slate-800">{record.femaleAnimal?.animalId} expected {formatDate(record.expectedBirthDate)}</div>
+                <div className="mt-1 text-xs text-slate-500">Male: {record.maleAnimal?.animalId} - {record.breedingResult}</div>
+              </div>
+            ))}
+            {!data?.expectedBirths?.length && <div className="text-sm text-slate-500">No expected births in the next 45 days.</div>}
+          </div>
+        </section>
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Recent Births</h2>
+          <div className="space-y-3">
+            {(data?.recentBirths || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-3">
+                <div className="font-semibold text-slate-800">{formatDate(record.birthDate)} - {record.numberOfOffspring} offspring</div>
+                <div className="mt-1 text-xs text-slate-500">Mother: {record.mother?.animalId} - Offspring: {(record.offspring || []).map((animal) => animal.animalId).join(", ")}</div>
+              </div>
+            ))}
+            {!data?.recentBirths?.length && <div className="text-sm text-slate-500">No birth records yet.</div>}
           </div>
         </section>
       </div>

@@ -6,6 +6,8 @@ Phase 2 adds QR Code Animal Identification.
 
 Phase 3 adds Health, Vet Records, and Vaccination Management.
 
+Phase 4 adds Breeding, Birth Records, and Family Tree.
+
 Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, and advanced reports.
 
 ## Stack
@@ -102,6 +104,10 @@ npm start             # start backend only
 - `PUT/DELETE /api/health-records/:id`
 - `GET/POST /api/vaccinations`
 - `PUT/DELETE /api/vaccinations/:id`
+- `GET/POST /api/breeding-records`
+- `PUT/DELETE /api/breeding-records/:id`
+- `GET/POST /api/birth-records`
+- `PUT/DELETE /api/birth-records/:id`
 - `GET /api/dashboard`
 
 All routes except register/login require a bearer token.
@@ -172,6 +178,24 @@ The dashboard now includes:
 - upcoming vaccinations
 - overdue vaccinations
 - recent vet cases
+
+## Breeding, Birth Records, and Family Tree
+
+Phase 4 adds:
+
+- breeding records for mating and pregnancy tracking
+- birth records for mother, father, and offspring
+- automatic parent/child linking when a birth record is created or updated
+- family tree panels on animal profiles
+- dashboard alerts for pregnant animals, expected births, recent births, and animals due for breeding
+
+Use:
+
+- `Breeding` to add mating records, pregnancy status, expected birth date, actual birth date, result, vet notes, and notes.
+- `Births` to add birth records, number of offspring, offspring animal IDs, complications, vet notes, and notes.
+- `Animals > View` to see parents, children, siblings, offspring count, breeding records, and birth records.
+
+For family linking, create the newborn animals first in `Animals`, then select those animal IDs as offspring when creating the birth record.
 
 ## GitHub
 

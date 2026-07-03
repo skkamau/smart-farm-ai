@@ -4,6 +4,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AnimalProfile from "./pages/AnimalProfile";
 import Animals from "./pages/Animals";
 import Auth from "./pages/Auth";
+import BirthRecords from "./pages/BirthRecords";
+import BreedingRecords from "./pages/BreedingRecords";
 import Crops from "./pages/Crops";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
@@ -27,6 +29,8 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="animals" element={<Animals />} />
         <Route path="animals/:id" element={<AnimalProfile />} />
+        <Route path="breeding" element={<BreedingRecords />} />
+        <Route path="births" element={<BirthRecords />} />
         <Route path="crops" element={<Crops />} />
         <Route path="finance" element={<Finance />} />
         <Route path="health" element={<HealthRecords />} />

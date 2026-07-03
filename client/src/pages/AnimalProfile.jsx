@@ -123,6 +123,26 @@ export default function AnimalProfile() {
         </aside>
       </div>
 
+      <section className="card mt-5 p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="font-bold text-farm-950">Family Tree</h2>
+          <Link className="btn-muted" to="/births"><Plus className="h-4 w-4" /> Add birth</Link>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr_1fr]">
+          <FamilyBox title="Parents" items={[animal.family?.mother, animal.family?.father]} empty="No parents linked" />
+          <div className="rounded-lg border border-farm-100 bg-farm-50 p-4 text-center">
+            <div className="label">Current animal</div>
+            <div className="mt-2 text-lg font-bold text-farm-950">{animal.animalId}</div>
+            <div className="text-sm text-slate-600">{animal.name || animal.species}</div>
+            <div className="mt-3 text-sm font-semibold text-farm-700">Offspring count: {animal.family?.offspringCount || 0}</div>
+          </div>
+          <FamilyBox title="Children" items={animal.family?.children || []} empty="No children linked" />
+        </div>
+        <div className="mt-4">
+          <FamilyBox title="Siblings" items={animal.family?.siblings || []} empty="No siblings linked" />
+        </div>
+      </section>
+
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <section className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -181,6 +201,39 @@ export default function AnimalProfile() {
           </div>
         </section>
       </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Breeding Records</h2>
+          <div className="space-y-3">
+            {(animal.breedingRecords || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-4">
+                <div className="font-bold text-slate-800">{animalLabel(record.femaleAnimal)} x {animalLabel(record.maleAnimal)}</div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                  <HistoryLine label="Mating" value={formatDate(record.matingDate)} />
+                  <HistoryLine label="Pregnancy" value={record.pregnancyStatus} />
+                  <HistoryLine label="Expected birth" value={formatDate(record.expectedBirthDate)} />
+                  <HistoryLine label="Result" value={record.breedingResult} />
+                </div>
+              </div>
+            ))}
+            {!animal.breedingRecords?.length && <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No breeding records yet.</div>}
+          </div>
+        </section>
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Birth Records</h2>
+          <div className="space-y-3">
+            {(animal.birthRecords || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-4">
+                <div className="font-bold text-slate-800">{formatDate(record.birthDate)} - {record.numberOfOffspring} offspring</div>
+                <div className="mt-2 text-sm text-slate-600">Mother: {animalLabel(record.mother)} | Father: {animalLabel(record.father)}</div>
+                <div className="mt-2 text-sm text-slate-600">Offspring: {(record.offspring || []).map(animalLabel).join(", ") || "Not linked"}</div>
+              </div>
+            ))}
+            {!animal.birthRecords?.length && <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No birth records yet.</div>}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -196,6 +249,27 @@ function Info({ label, value }) {
 
 function HistoryLine({ label, value }) {
   return <div><span className="font-semibold text-slate-500">{label}:</span> <span className="text-slate-700">{value || "Not recorded"}</span></div>;
+}
+
+function animalLabel(animal) {
+  return animal ? `${animal.animalId} - ${animal.name || animal.species}` : "Not set";
+}
+
+function FamilyBox({ title, items, empty }) {
+  const visible = (items || []).filter(Boolean);
+  return (
+    <div className="rounded-lg border border-slate-100 p-4">
+      <div className="label">{title}</div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        {visible.map((animal) => (
+          <Link key={animal._id} to={`/animals/${animal._id}`} className="rounded-md bg-white p-3 text-sm font-semibold text-slate-700 hover:bg-farm-50">
+            {animalLabel(animal)}
+          </Link>
+        ))}
+        {!visible.length && <div className="text-sm text-slate-500">{empty}</div>}
+      </div>
+    </div>
+  );
 }
 
 function VaccineStatus({ value }) {

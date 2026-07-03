@@ -1,5 +1,7 @@
 import { body } from "express-validator";
 import Animal from "../models/Animal.js";
+import BirthRecord from "../models/BirthRecord.js";
+import BreedingRecord from "../models/BreedingRecord.js";
 import HealthRecord from "../models/HealthRecord.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
 import { ensureAnimalQr, extractQrCodeId } from "../utils/qr.js";
@@ -63,9 +65,39 @@ export async function getAnimal(req, res, next) {
       HealthRecord.find({ animal: animal._id, user: req.user._id }).sort({ recordDate: -1 }),
       VaccinationRecord.find({ animal: animal._id, user: req.user._id }).sort({ nextDueDate: 1, dateGiven: -1 })
     ]);
+    const siblingQuery = [
+      ...(animal.mother ? [{ mother: animal.mother }] : []),
+      ...(animal.father ? [{ father: animal.father }] : [])
+    ];
+    const [mother, father, children, siblings, breedingRecords, birthRecords] = await Promise.all([
+      animal.mother ? Animal.findOne({ _id: animal.mother, user: req.user._id }).select("animalId name species gender") : null,
+      animal.father ? Animal.findOne({ _id: animal.father, user: req.user._id }).select("animalId name species gender") : null,
+      Animal.find({ user: req.user._id, _id: { $in: animal.children || [] } }).select("animalId name species gender"),
+      siblingQuery.length
+        ? Animal.find({ user: req.user._id, _id: { $ne: animal._id }, $or: siblingQuery }).select("animalId name species gender mother father")
+        : [],
+      BreedingRecord.find({ user: req.user._id, $or: [{ femaleAnimal: animal._id }, { maleAnimal: animal._id }] })
+        .populate("femaleAnimal", "animalId name species")
+        .populate("maleAnimal", "animalId name species")
+        .sort({ matingDate: -1 }),
+      BirthRecord.find({ user: req.user._id, $or: [{ mother: animal._id }, { father: animal._id }, { offspring: animal._id }] })
+        .populate("mother", "animalId name species")
+        .populate("father", "animalId name species")
+        .populate("offspring", "animalId name species")
+        .sort({ birthDate: -1 })
+    ]);
     const normalizedVaccinations = await Promise.all(vaccinationRecords.map((record) => normalizeVaccination(record)));
     res.json({
       ...animal.toObject(),
+      family: {
+        mother,
+        father,
+        children,
+        siblings: siblings.filter((sibling) => Boolean(animal.mother || animal.father)),
+        offspringCount: children.length
+      },
+      breedingRecords,
+      birthRecords,
       healthRecords,
       vaccinationRecords: normalizedVaccinations,
       upcomingVaccinations: normalizedVaccinations.filter((record) => record.status === "upcoming"),

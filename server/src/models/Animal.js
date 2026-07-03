@@ -19,6 +19,9 @@ const animalSchema = new mongoose.Schema(
     location: { type: String, trim: true },
     status: { type: String, enum: ["Healthy", "Sick", "Pregnant", "Sold", "Archived"], default: "Healthy" },
     estimatedValue: { type: Number, min: 0, default: 0 },
+    mother: { type: mongoose.Schema.Types.ObjectId, ref: "Animal", default: null, index: true },
+    father: { type: mongoose.Schema.Types.ObjectId, ref: "Animal", default: null, index: true },
+    children: [{ type: mongoose.Schema.Types.ObjectId, ref: "Animal" }],
     qrCodeId: { type: String, unique: true, sparse: true, index: true },
     qrCodeValue: { type: String, trim: true },
     notes: { type: String, trim: true }

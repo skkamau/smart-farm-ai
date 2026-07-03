@@ -1,4 +1,6 @@
 import Animal from "../models/Animal.js";
+import BirthRecord from "../models/BirthRecord.js";
+import BreedingRecord from "../models/BreedingRecord.js";
 import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
@@ -8,12 +10,22 @@ import { normalizeVaccination } from "../utils/vaccinations.js";
 export async function getDashboard(req, res, next) {
   try {
     const user = req.user._id;
-    const [animals, crops, transactions, recentVetCases, vaccinations] = await Promise.all([
+    const today = new Date();
+    const next45 = new Date();
+    next45.setDate(today.getDate() + 45);
+    const [animals, crops, transactions, recentVetCases, vaccinations, recentBirths, expectedBirths] = await Promise.all([
       Animal.find({ user }).lean(),
       Crop.find({ user }).lean(),
       Transaction.find({ user }).sort({ transactionDate: -1 }).limit(8).lean(),
       HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).limit(6).lean(),
-      VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).limit(25)
+      VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).limit(25),
+      BirthRecord.find({ user }).populate("mother", "animalId name species").populate("father", "animalId name species").populate("offspring", "animalId name species").sort({ birthDate: -1 }).limit(6).lean(),
+      BreedingRecord.find({ user, pregnancyStatus: "pregnant", expectedBirthDate: { $gte: today, $lte: next45 } })
+        .populate("femaleAnimal", "animalId name species")
+        .populate("maleAnimal", "animalId name species")
+        .sort({ expectedBirthDate: 1 })
+        .limit(8)
+        .lean()
     ]);
     const normalizedVaccinations = await Promise.all(vaccinations.map((record) => normalizeVaccination(record)));
 
@@ -29,7 +41,9 @@ export async function getDashboard(req, res, next) {
     const totalIncome = income[0]?.total || 0;
     const totalExpenses = expenses[0]?.total || 0;
     const sickAnimals = animals.filter((animal) => animal.status === "Sick").length;
+    const pregnantAnimals = animals.filter((animal) => animal.status === "Pregnant").length;
     const readyCrops = crops.filter((crop) => crop.status === "Ready").length;
+    const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.status === "Healthy").length;
     const upcomingVaccinations = normalizedVaccinations.filter((record) => record.status === "upcoming").length;
     const overdueVaccinations = normalizedVaccinations.filter((record) => record.status === "overdue").length;
 
@@ -38,6 +52,9 @@ export async function getDashboard(req, res, next) {
         animals: animals.length,
         crops: crops.length,
         sickAnimals,
+        pregnantAnimals,
+        expectedBirths: expectedBirths.length,
+        dueForBreeding,
         upcomingVaccinations,
         overdueVaccinations,
         readyCrops,
@@ -55,6 +72,8 @@ export async function getDashboard(req, res, next) {
       })),
       recentTransactions: transactions,
       recentVetCases,
+      recentBirths,
+      expectedBirths,
       vaccinationAlerts: normalizedVaccinations
         .filter((record) => ["upcoming", "overdue"].includes(record.status))
         .slice(0, 8)

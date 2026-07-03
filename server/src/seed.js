@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { connectDB } from "./config/db.js";
 import Animal from "./models/Animal.js";
+import BirthRecord from "./models/BirthRecord.js";
+import BreedingRecord from "./models/BreedingRecord.js";
 import Crop from "./models/Crop.js";
 import HealthRecord from "./models/HealthRecord.js";
 import Transaction from "./models/Transaction.js";
@@ -19,7 +21,9 @@ async function seed() {
     Crop.deleteMany({}),
     Transaction.deleteMany({}),
     HealthRecord.deleteMany({}),
-    VaccinationRecord.deleteMany({})
+    VaccinationRecord.deleteMany({}),
+    BreedingRecord.deleteMany({}),
+    BirthRecord.deleteMany({})
   ]);
 
   const user = await User.create({
@@ -32,12 +36,33 @@ async function seed() {
   const animals = await Animal.insertMany([
     { user: user._id, animalId: "COW-001", name: "Maziwa", species: "Cow", breed: "Friesian", gender: "Female", dateOfBirth: "2022-04-12", weight: 418, location: "Dairy Pen A", status: "Healthy", estimatedValue: 92000, notes: "High milk producer" },
     { user: user._id, animalId: "COW-002", name: "Lulu", species: "Cow", breed: "Ayrshire", gender: "Female", dateOfBirth: "2021-11-20", weight: 392, location: "Dairy Pen A", status: "Pregnant", estimatedValue: 88000, notes: "Expected calving in August" },
+    { user: user._id, animalId: "BULL-001", name: "Jabali", species: "Cow", breed: "Friesian", gender: "Male", dateOfBirth: "2020-03-15", weight: 620, location: "Bull Pen", status: "Healthy", estimatedValue: 125000, notes: "Breeding bull" },
     { user: user._id, animalId: "GOAT-014", name: "Kito", species: "Goat", breed: "Boer", gender: "Male", dateOfBirth: "2023-01-18", weight: 54, location: "Goat Shed", status: "Healthy", estimatedValue: 24000 },
     { user: user._id, animalId: "SHP-007", name: "Nuru", species: "Sheep", breed: "Dorper", gender: "Female", dateOfBirth: "2023-08-09", weight: 43, location: "Paddock 2", status: "Sick", estimatedValue: 18000, notes: "Under observation for cough" },
     { user: user._id, animalId: "CHK-101", name: "Layer Batch 1", species: "Chicken", breed: "Rhode Island Red", gender: "Female", dateOfBirth: "2024-02-01", weight: 2, location: "Coop 1", status: "Healthy", estimatedValue: 650 }
   ]);
   await Promise.all(animals.map((animal) => ensureAnimalQr(animal)));
   const animalById = Object.fromEntries(animals.map((animal) => [animal.animalId, animal]));
+
+  const calf = await Animal.create({
+    user: user._id,
+    animalId: "CALF-003",
+    name: "Baraka",
+    species: "Cow",
+    breed: "Friesian Cross",
+    gender: "Male",
+    dateOfBirth: "2026-06-10",
+    weight: 62,
+    location: "Calf Pen",
+    status: "Healthy",
+    estimatedValue: 32000,
+    mother: animalById["COW-001"]._id,
+    father: animalById["BULL-001"]._id,
+    notes: "Strong birth weight."
+  });
+  animalById["CALF-003"] = calf;
+  await Animal.updateOne({ _id: animalById["COW-001"]._id }, { $addToSet: { children: calf._id } });
+  await Animal.updateOne({ _id: animalById["BULL-001"]._id }, { $addToSet: { children: calf._id } });
 
   await HealthRecord.insertMany([
     {
@@ -103,6 +128,34 @@ async function seed() {
       batchNumber: "ND-910",
       status: "upcoming",
       notes: "Repeat every two months."
+    }
+  ]);
+
+  await BreedingRecord.insertMany([
+    {
+      user: user._id,
+      femaleAnimal: animalById["COW-002"]._id,
+      maleAnimal: animalById["BULL-001"]._id,
+      matingDate: "2026-04-20",
+      pregnancyStatus: "pregnant",
+      expectedBirthDate: "2026-08-28",
+      vetNotes: "Pregnancy progressing normally.",
+      breedingResult: "pending",
+      notes: "Check body condition weekly."
+    }
+  ]);
+
+  await BirthRecord.insertMany([
+    {
+      user: user._id,
+      mother: animalById["COW-001"]._id,
+      father: animalById["BULL-001"]._id,
+      birthDate: "2026-06-10",
+      numberOfOffspring: 1,
+      offspring: [animalById["CALF-003"]._id],
+      birthComplications: "None",
+      vetNotes: "Normal delivery.",
+      notes: "Calf nursing well."
     }
   ]);
 

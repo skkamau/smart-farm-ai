@@ -7,6 +7,8 @@ import morgan from "morgan";
 import { connectDB } from "./config/db.js";
 import animalRoutes from "./routes/animalRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import birthRoutes from "./routes/birthRoutes.js";
+import breedingRoutes from "./routes/breedingRoutes.js";
 import cropRoutes from "./routes/cropRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
@@ -29,6 +31,8 @@ app.get("/api/health", (req, res) => res.json({ status: "ok", service: "Smart Fa
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/animals", animalRoutes);
+app.use("/api/breeding-records", breedingRoutes);
+app.use("/api/birth-records", birthRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/health-records", healthRoutes);
