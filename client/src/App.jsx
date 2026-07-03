@@ -7,7 +7,9 @@ import Auth from "./pages/Auth";
 import Crops from "./pages/Crops";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
+import HealthRecords from "./pages/HealthRecords";
 import Scanner from "./pages/Scanner";
+import Vaccinations from "./pages/Vaccinations";
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="animals/:id" element={<AnimalProfile />} />
         <Route path="crops" element={<Crops />} />
         <Route path="finance" element={<Finance />} />
+        <Route path="health" element={<HealthRecords />} />
+        <Route path="vaccinations" element={<Vaccinations />} />
         <Route path="scan" element={<Scanner />} />
         <Route path="scan/:qrCodeId" element={<Scanner />} />
       </Route>

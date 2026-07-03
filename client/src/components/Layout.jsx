@@ -1,4 +1,4 @@
-import { BarChart3, Beef, Leaf, LogOut, Menu, QrCode, ReceiptText, Sprout, X } from "lucide-react";
+import { BarChart3, Beef, Leaf, LogOut, Menu, QrCode, ReceiptText, ShieldPlus, Sprout, Stethoscope, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +7,8 @@ const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
   { to: "/animals", label: "Animals", icon: Beef },
   { to: "/scan", label: "Scan QR", icon: QrCode },
+  { to: "/health", label: "Health", icon: Stethoscope },
+  { to: "/vaccinations", label: "Vaccines", icon: ShieldPlus },
   { to: "/crops", label: "Crops", icon: Sprout },
   { to: "/finance", label: "Finance", icon: ReceiptText }
 ];
@@ -51,7 +53,7 @@ export default function Layout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-slate-200 bg-white lg:hidden">
-        {nav.map((item) => (
+        {nav.slice(0, 5).map((item) => (
           <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex flex-col items-center gap-1 px-2 py-2 text-xs ${isActive ? "text-farm-700" : "text-slate-500"}`} end={item.to === "/"}>
             <item.icon className="h-5 w-5" />
             {item.label}

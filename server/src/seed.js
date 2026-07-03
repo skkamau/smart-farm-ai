@@ -3,15 +3,24 @@ import mongoose from "mongoose";
 import { connectDB } from "./config/db.js";
 import Animal from "./models/Animal.js";
 import Crop from "./models/Crop.js";
+import HealthRecord from "./models/HealthRecord.js";
 import Transaction from "./models/Transaction.js";
 import User from "./models/User.js";
+import VaccinationRecord from "./models/VaccinationRecord.js";
 import { ensureAnimalQr } from "./utils/qr.js";
 
 dotenv.config();
 
 async function seed() {
   await connectDB();
-  await Promise.all([User.deleteMany({}), Animal.deleteMany({}), Crop.deleteMany({}), Transaction.deleteMany({})]);
+  await Promise.all([
+    User.deleteMany({}),
+    Animal.deleteMany({}),
+    Crop.deleteMany({}),
+    Transaction.deleteMany({}),
+    HealthRecord.deleteMany({}),
+    VaccinationRecord.deleteMany({})
+  ]);
 
   const user = await User.create({
     name: "Amina Farm Manager",
@@ -28,6 +37,74 @@ async function seed() {
     { user: user._id, animalId: "CHK-101", name: "Layer Batch 1", species: "Chicken", breed: "Rhode Island Red", gender: "Female", dateOfBirth: "2024-02-01", weight: 2, location: "Coop 1", status: "Healthy", estimatedValue: 650 }
   ]);
   await Promise.all(animals.map((animal) => ensureAnimalQr(animal)));
+  const animalById = Object.fromEntries(animals.map((animal) => [animal.animalId, animal]));
+
+  await HealthRecord.insertMany([
+    {
+      user: user._id,
+      animal: animalById["SHP-007"]._id,
+      recordDate: "2026-06-25",
+      condition: "Respiratory infection",
+      symptoms: "Coughing, low appetite, mild fever",
+      diagnosis: "Likely bacterial respiratory infection",
+      treatment: "Vet examination and antibiotic course",
+      medication: "Oxytetracycline",
+      dosage: "5 ml once daily for 3 days",
+      vetName: "Dr. Wanjiku",
+      recoveryStatus: "Recovering",
+      notes: "Keep isolated and monitor temperature."
+    },
+    {
+      user: user._id,
+      animal: animalById["COW-002"]._id,
+      recordDate: "2026-06-18",
+      condition: "Pregnancy check",
+      symptoms: "Routine reproductive exam",
+      diagnosis: "Pregnancy confirmed",
+      treatment: "No treatment required",
+      medication: "",
+      dosage: "",
+      vetName: "Dr. Otieno",
+      recoveryStatus: "Recovered",
+      notes: "Schedule next check in four weeks."
+    }
+  ]);
+
+  await VaccinationRecord.insertMany([
+    {
+      user: user._id,
+      animal: animalById["COW-001"]._id,
+      vaccineName: "FMD",
+      dateGiven: "2026-01-10",
+      nextDueDate: "2026-07-20",
+      vetName: "Dr. Wanjiku",
+      batchNumber: "FMD-KE-1182",
+      status: "upcoming",
+      notes: "Booster due soon."
+    },
+    {
+      user: user._id,
+      animal: animalById["GOAT-014"]._id,
+      vaccineName: "PPR",
+      dateGiven: "2025-12-02",
+      nextDueDate: "2026-06-25",
+      vetName: "Dr. Otieno",
+      batchNumber: "PPR-4401",
+      status: "overdue",
+      notes: "Prioritize this week."
+    },
+    {
+      user: user._id,
+      animal: animalById["CHK-101"]._id,
+      vaccineName: "Newcastle",
+      dateGiven: "2026-06-12",
+      nextDueDate: "2026-08-12",
+      vetName: "Farm team",
+      batchNumber: "ND-910",
+      status: "upcoming",
+      notes: "Repeat every two months."
+    }
+  ]);
 
   await Crop.insertMany([
     { user: user._id, name: "Maize", field: "North Field", plot: "N-2", area: 4.5, plantingDate: "2026-03-20", harvestDate: "2026-08-15", expectedYield: 6200, cost: 118000, revenue: 0, status: "Growing", notes: "Top dressed in June" },

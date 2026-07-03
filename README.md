@@ -4,7 +4,9 @@ Phase 1 is a working full-stack farm management app with authentication, dashboa
 
 Phase 2 adds QR Code Animal Identification.
 
-Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, reports, and advanced health records.
+Phase 3 adds Health, Vet Records, and Vaccination Management.
+
+Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, and advanced reports.
 
 ## Stack
 
@@ -96,6 +98,10 @@ npm start             # start backend only
 - `PUT/DELETE /api/crops/:id`
 - `GET/POST /api/transactions`
 - `PUT/DELETE /api/transactions/:id`
+- `GET/POST /api/health-records`
+- `PUT/DELETE /api/health-records/:id`
+- `GET/POST /api/vaccinations`
+- `PUT/DELETE /api/vaccinations/:id`
 - `GET /api/dashboard`
 
 All routes except register/login require a bearer token.
@@ -131,6 +137,41 @@ If Vite starts on another port because `5173` is busy, update `CLIENT_URL`, rest
 6. The scanner opens the matching animal profile.
 
 Old animals without QR codes are repaired automatically when animal records are listed or opened.
+
+## Health, Vet, and Vaccination Management
+
+Phase 3 adds two protected record modules:
+
+- `Health & Vet Records`
+- `Vaccinations`
+
+Use the sidebar on desktop, or mobile menu, to open each module.
+
+Health records include animal, date, condition/disease, symptoms, diagnosis, treatment, medication, dosage, vet name, recovery status, and notes.
+
+Vaccination records include animal, vaccine name, date given, next due date, vet name, batch number, status, and notes.
+
+Vaccination status is automatically refreshed from `nextDueDate`:
+
+- past due date: `overdue`
+- today or future due date: `upcoming`
+- no due date: existing/manual status, usually `completed`
+
+Animal profiles now show:
+
+- health history
+- vet cases
+- previous treatments
+- vaccination history
+- upcoming vaccinations
+- overdue vaccinations
+
+The dashboard now includes:
+
+- sick animals
+- upcoming vaccinations
+- overdue vaccinations
+- recent vet cases
 
 ## GitHub
 

@@ -38,6 +38,8 @@ export default function Dashboard() {
             <Signal icon={Beef} label="Sick animals" value={totals.sickAnimals || 0} tone="text-red-700 bg-red-50" />
             <Signal icon={Sprout} label="Ready crops" value={totals.readyCrops || 0} tone="text-farm-700 bg-farm-50" />
             <Signal icon={ArrowDownCircle} label="Expenses" value={currency.format(totals.expenses || 0)} tone="text-amber-700 bg-amber-50" />
+            <Signal icon={AlertTriangle} label="Upcoming vaccines" value={totals.upcomingVaccinations || 0} tone="text-amber-700 bg-amber-50" />
+            <Signal icon={AlertTriangle} label="Overdue vaccines" value={totals.overdueVaccinations || 0} tone="text-red-700 bg-red-50" />
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <MiniBars title="Animal Status" items={data?.animalStatus || []} labelKey="status" />
@@ -55,7 +57,7 @@ export default function Dashboard() {
               <div key={item._id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
                 <div>
                   <div className="font-semibold text-slate-800">{item.description}</div>
-                  <div className="text-xs text-slate-500">{formatDate(item.transactionDate)} · {item.category}</div>
+                  <div className="text-xs text-slate-500">{formatDate(item.transactionDate)} - {item.category}</div>
                 </div>
                 <div className={item.type === "income" ? "font-bold text-farm-700" : "font-bold text-red-700"}>
                   {item.type === "income" ? "+" : "-"}{currency.format(item.amount)}
@@ -63,6 +65,40 @@ export default function Dashboard() {
               </div>
             ))}
             {!data?.recentTransactions?.length && <div className="text-sm text-slate-500">No transactions yet.</div>}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Vaccination Alerts</h2>
+          <div className="space-y-3">
+            {(data?.vaccinationAlerts || []).map((record) => (
+              <div key={record._id} className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                <div>
+                  <div className="font-semibold text-slate-800">{record.vaccineName}</div>
+                  <div className="text-xs text-slate-500">{record.animal?.animalId} - due {formatDate(record.nextDueDate)}</div>
+                </div>
+                <span className={record.status === "overdue" ? "rounded-md bg-red-50 px-2 py-1 text-xs font-bold text-red-700" : "rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700"}>{record.status}</span>
+              </div>
+            ))}
+            {!data?.vaccinationAlerts?.length && <div className="text-sm text-slate-500">No vaccination alerts.</div>}
+          </div>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="mb-4 font-bold text-farm-950">Recent Vet Cases</h2>
+          <div className="space-y-3">
+            {(data?.recentVetCases || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-semibold text-slate-800">{record.condition}</div>
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{record.recoveryStatus}</span>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{record.animal?.animalId} - {formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>
+              </div>
+            ))}
+            {!data?.recentVetCases?.length && <div className="text-sm text-slate-500">No vet cases recorded.</div>}
           </div>
         </section>
       </div>
@@ -103,3 +139,4 @@ function MiniBars({ title, items, labelKey }) {
     </div>
   );
 }
+

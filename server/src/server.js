@@ -9,7 +9,9 @@ import animalRoutes from "./routes/animalRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cropRoutes from "./routes/cropRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import healthRoutes from "./routes/healthRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
+import vaccinationRoutes from "./routes/vaccinationRoutes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
 dotenv.config();
@@ -29,6 +31,8 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/animals", animalRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/health-records", healthRoutes);
+app.use("/api/vaccinations", vaccinationRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

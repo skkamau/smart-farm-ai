@@ -1,6 +1,9 @@
 import { body } from "express-validator";
 import Animal from "../models/Animal.js";
+import HealthRecord from "../models/HealthRecord.js";
+import VaccinationRecord from "../models/VaccinationRecord.js";
 import { ensureAnimalQr, extractQrCodeId } from "../utils/qr.js";
+import { normalizeVaccination } from "../utils/vaccinations.js";
 
 export const animalRules = [
   body("animalId").trim().notEmpty().withMessage("Animal ID is required"),
@@ -56,7 +59,18 @@ export async function getAnimal(req, res, next) {
     const animal = await Animal.findOne({ _id: req.params.id, user: req.user._id });
     if (!animal) return res.status(404).json({ message: "Animal not found" });
     await ensureAnimalQr(animal);
-    res.json(animal);
+    const [healthRecords, vaccinationRecords] = await Promise.all([
+      HealthRecord.find({ animal: animal._id, user: req.user._id }).sort({ recordDate: -1 }),
+      VaccinationRecord.find({ animal: animal._id, user: req.user._id }).sort({ nextDueDate: 1, dateGiven: -1 })
+    ]);
+    const normalizedVaccinations = await Promise.all(vaccinationRecords.map((record) => normalizeVaccination(record)));
+    res.json({
+      ...animal.toObject(),
+      healthRecords,
+      vaccinationRecords: normalizedVaccinations,
+      upcomingVaccinations: normalizedVaccinations.filter((record) => record.status === "upcoming"),
+      overdueVaccinations: normalizedVaccinations.filter((record) => record.status === "overdue")
+    });
   } catch (error) {
     next(error);
   }

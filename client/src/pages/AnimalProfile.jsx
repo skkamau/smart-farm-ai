@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { ArrowLeft, Download, Plus, Printer } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -53,7 +53,7 @@ export default function AnimalProfile() {
           <div class="label">
             <img src="${qrDataUrl}" alt="QR code" />
             <h1>${animal.animalId}</h1>
-            <p>${animal.name || "Unnamed"} · ${animal.species}</p>
+            <p>${animal.name || "Unnamed"} - ${animal.species}</p>
             <p>${animal.qrCodeId}</p>
           </div>
           <script>window.onload = () => { window.print(); window.close(); };</script>
@@ -122,6 +122,65 @@ export default function AnimalProfile() {
           </div>
         </aside>
       </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-bold text-farm-950">Health History & Vet Cases</h2>
+            <Link className="btn-muted" to="/health"><Plus className="h-4 w-4" /> Add</Link>
+          </div>
+          <div className="space-y-3">
+            {(animal.healthRecords || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-bold text-slate-800">{record.condition}</div>
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{record.recoveryStatus}</span>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>
+                <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  <HistoryLine label="Symptoms" value={record.symptoms} />
+                  <HistoryLine label="Diagnosis" value={record.diagnosis} />
+                  <HistoryLine label="Treatment" value={record.treatment} />
+                  <HistoryLine label="Medication" value={[record.medication, record.dosage].filter(Boolean).join(" - ")} />
+                </div>
+                {record.notes && <p className="mt-3 text-sm text-slate-600">{record.notes}</p>}
+              </div>
+            ))}
+            {!animal.healthRecords?.length && <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No health records yet.</div>}
+          </div>
+        </section>
+
+        <section className="card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-bold text-farm-950">Vaccination History</h2>
+            <Link className="btn-muted" to="/vaccinations"><Plus className="h-4 w-4" /> Add</Link>
+          </div>
+          {(animal.overdueVaccinations || []).length > 0 && (
+            <Alert title="Overdue vaccines" records={animal.overdueVaccinations} tone="red" />
+          )}
+          {(animal.upcomingVaccinations || []).length > 0 && (
+            <Alert title="Upcoming vaccines" records={animal.upcomingVaccinations} tone="amber" />
+          )}
+          <div className="mt-4 space-y-3">
+            {(animal.vaccinationRecords || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-slate-100 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-bold text-slate-800">{record.vaccineName}</div>
+                  <VaccineStatus value={record.status} />
+                </div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                  <HistoryLine label="Date given" value={formatDate(record.dateGiven)} />
+                  <HistoryLine label="Next due" value={formatDate(record.nextDueDate)} />
+                  <HistoryLine label="Vet" value={record.vetName || "Not set"} />
+                  <HistoryLine label="Batch" value={record.batchNumber || "Not set"} />
+                </div>
+                {record.notes && <p className="mt-3 text-sm text-slate-600">{record.notes}</p>}
+              </div>
+            ))}
+            {!animal.vaccinationRecords?.length && <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No vaccination records yet.</div>}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -134,3 +193,23 @@ function Info({ label, value }) {
     </div>
   );
 }
+
+function HistoryLine({ label, value }) {
+  return <div><span className="font-semibold text-slate-500">{label}:</span> <span className="text-slate-700">{value || "Not recorded"}</span></div>;
+}
+
+function VaccineStatus({ value }) {
+  const tone = value === "overdue" ? "bg-red-50 text-red-700" : value === "upcoming" ? "bg-amber-50 text-amber-700" : "bg-farm-50 text-farm-700";
+  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{value}</span>;
+}
+
+function Alert({ title, records, tone }) {
+  const classes = tone === "red" ? "border-red-100 bg-red-50 text-red-800" : "border-amber-100 bg-amber-50 text-amber-800";
+  return (
+    <div className={`mb-3 rounded-lg border p-3 ${classes}`}>
+      <div className="text-sm font-bold">{title}</div>
+      <div className="mt-1 text-sm">{records.map((record) => `${record.vaccineName} (${formatDate(record.nextDueDate)})`).join(", ")}</div>
+    </div>
+  );
+}
+
