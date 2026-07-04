@@ -4,31 +4,31 @@ export default {
     extend: {
       colors: {
         farm: {
-          50: "#f2f6f0",
-          100: "#e6f0e8",
-          200: "#d5eddb",
-          300: "#bde0c8",
-          500: "#4aab76",
-          700: "#276749",
-          800: "#21543d",
-          900: "#1c3f31",
-          950: "#18271e"
+          50: "#f7f8f2",
+          100: "#ebedd9",
+          200: "#dfe3c4",
+          300: "#cbd3a5",
+          500: "#3b7a58",
+          700: "#06452f",
+          800: "#013d2a",
+          900: "#003522",
+          950: "#08251a"
         },
         field: {
-          cream: "#f8fbf6",
-          mist: "#f2f6f0",
-          sage: "#e6f0e8",
-          lime: "#d5eddb",
-          soil: "#5e7d68",
-          danger: "#c0392b"
+          cream: "#f8f9f4",
+          mist: "#eef1e8",
+          sage: "#e4e8cf",
+          lime: "#dfe8bf",
+          soil: "#867b62",
+          danger: "#b74444"
         }
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       boxShadow: {
-        soft: "0 10px 26px rgba(39, 103, 73, 0.11)",
-        lift: "0 22px 60px rgba(24, 39, 30, 0.14)"
+        soft: "0 12px 30px rgba(8, 37, 26, 0.08)",
+        lift: "0 18px 50px rgba(8, 37, 26, 0.12)"
       }
     }
   },

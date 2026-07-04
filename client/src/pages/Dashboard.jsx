@@ -1,14 +1,13 @@
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bot, CalendarClock, HeartPulse, Plus, QrCode, Sprout, WalletCards } from "lucide-react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bot, CalendarClock, Leaf, Sprout } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
+import PageHeader from "../components/PageHeader";
+import StatCard from "../components/StatCard";
 import api from "../services/api";
 import { currency, formatDate } from "../utils";
-import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
-  const { user } = useAuth();
 
   useEffect(() => {
     api
@@ -18,207 +17,217 @@ export default function Dashboard() {
   }, []);
 
   const totals = data?.totals || {};
-  const firstName = user?.name?.split(" ")[0] || "Farmer";
-  const overdue = totals.overdueVaccinations || 0;
-  const firstOverdue = data?.vaccinationAlerts?.find((record) => record.status === "overdue");
 
   return (
-    <div className="space-y-7">
-      <header className="pt-1">
-        <p className="text-base font-bold text-field-soil">Good morning,</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-farm-950">{firstName}</h1>
-      </header>
+    <div>
+      <PageHeader title="Dashboard" eyebrow="SmartFarm AI" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Animals" value={totals.animals ?? "..."} detail="Active livestock records" />
+        <StatCard label="Crops" value={totals.crops ?? "..."} detail={`${totals.readyCrops || 0} ready for harvest`} tone="slate" />
+        <StatCard label="Income" value={currency.format(totals.income || 0)} detail="Recorded farm income" />
+        <StatCard label="Profit/Loss" value={currency.format(totals.profitLoss || 0)} detail="Income minus expenses" tone={(totals.profitLoss || 0) >= 0 ? "green" : "red"} />
+        <StatCard label="Pregnant" value={totals.pregnantAnimals || 0} detail={`${totals.expectedBirths || 0} births expected`} tone="amber" />
+        <StatCard label="Due for breeding" value={totals.dueForBreeding || 0} detail="Healthy female animals" tone="slate" />
+      </div>
 
-      {(overdue > 0 || firstOverdue) && (
-        <section className="rounded-[1.7rem] border border-red-100 bg-red-50/90 p-5 shadow-soft">
-          <div className="flex items-center gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">
-              <AlertTriangle className="h-7 w-7" />
-            </span>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
+        <section className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black text-red-800">{overdue || 1} vaccine overdue!</h2>
-              <p className="mt-1 text-sm font-bold text-red-600">
-                {firstOverdue?.animal?.name || firstOverdue?.animal?.animalId || "Animal"} - {firstOverdue?.vaccineName || "Vaccination"} needs attention
-              </p>
+              <div className="label">Live farm signals</div>
+              <h2 className="mt-1 font-black text-farm-950">Operational Signals</h2>
             </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-field-sage text-farm-800">
+              <AlertTriangle className="h-5 w-5" />
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Signal icon={Beef} label="Sick animals" value={totals.sickAnimals || 0} tone="danger" />
+            <Signal icon={Sprout} label="Ready crops" value={totals.readyCrops || 0} tone="green" />
+            <Signal icon={ArrowDownCircle} label="Expenses" value={currency.format(totals.expenses || 0)} tone="amber" />
+            <Signal icon={CalendarClock} label="Upcoming vaccines" value={totals.upcomingVaccinations || 0} tone="amber" />
+            <Signal icon={AlertTriangle} label="Overdue vaccines" value={totals.overdueVaccinations || 0} tone="danger" />
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <MiniBars title="Animal Status" items={data?.animalStatus || []} labelKey="status" />
+            <MiniBars title="Crop Status" items={data?.cropStatus || []} labelKey="status" />
           </div>
         </section>
-      )}
 
-      <section>
-        <SectionTitle>Farm Overview</SectionTitle>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <OverviewCard icon={Beef} label="Total Animals" value={totals.animals ?? "..."} tone="mint" />
-          <OverviewCard icon={Sprout} label="Total Crops" value={totals.crops ?? "..."} tone="mint" />
-          <OverviewCard icon={HeartPulse} label="Sick Animals" value={totals.sickAnimals || 0} detail="Needs attention" tone="rose" />
-          <OverviewCard icon={CalendarClock} label="Due Vaccines" value={(totals.upcomingVaccinations || 0) + overdue} detail={`${overdue} overdue`} tone="lavender" />
-          <OverviewCard icon={Beef} label="Pregnant" value={totals.pregnantAnimals || 0} detail="animals" tone="amber" />
-          <OverviewCard icon={ArrowUpCircle} label="Monthly Income" value={compactMoney(totals.income || 0)} detail="Current records" tone="mint" />
-          <OverviewCard icon={ArrowDownCircle} label="Monthly Expenses" value={compactMoney(totals.expenses || 0)} detail="Current records" tone="rose" />
-          <OverviewCard icon={WalletCards} label="Profit" value={compactMoney(totals.profitLoss || 0)} detail={(totals.profitLoss || 0) >= 0 ? "Positive" : "Loss"} tone="gold" />
-        </div>
-      </section>
+        <section className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="label">Finance</div>
+              <h2 className="mt-1 font-black text-farm-950">Recent Transactions</h2>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-farm-800 text-white">
+              <ArrowUpCircle className="h-5 w-5" />
+            </span>
+          </div>
+          <div className="space-y-3">
+            {(data?.recentTransactions || []).map((item) => (
+              <div key={item._id} className="flex items-center justify-between rounded-lg border border-farm-100 bg-field-cream p-3">
+                <div>
+                  <div className="font-bold text-farm-950">{item.description}</div>
+                  <div className="text-xs text-slate-500">{formatDate(item.transactionDate)} - {item.category}</div>
+                </div>
+                <div className={item.type === "income" ? "font-bold text-farm-700" : "font-bold text-red-700"}>
+                  {item.type === "income" ? "+" : "-"}{currency.format(item.amount)}
+                </div>
+              </div>
+            ))}
+            {!data?.recentTransactions?.length && <div className="text-sm text-slate-500">No transactions yet.</div>}
+          </div>
+        </section>
+      </div>
 
-      <section>
-        <SectionTitle>Quick Actions</SectionTitle>
-        <div className="mt-4 grid grid-cols-4 gap-3">
-          <QuickAction to="/animals" icon={Beef} label="Add Animal" />
-          <QuickAction to="/scan" icon={QrCode} label="Scan QR" />
-          <QuickAction to="/crops" icon={Sprout} label="Add Crop" />
-          <QuickAction to="/finance" icon={Plus} label="Expense" />
+      <section className="card mt-5 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="label">Advisory</div>
+            <h2 className="mt-1 font-black text-farm-950">Smart Recommendations</h2>
+          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-field-sage text-farm-800">
+            <Bot className="h-5 w-5" />
+          </span>
         </div>
-      </section>
-
-      <section className="card p-5">
-        <div className="flex items-center justify-between">
-          <SectionTitle flush>AI Recommendations</SectionTitle>
-          <Link className="rounded-full bg-farm-100 px-3 py-1.5 text-xs font-black text-farm-700" to="/assistant">
-            Chat AI
-          </Link>
-        </div>
-        <div className="mt-4 space-y-3">
-          {(data?.aiRecommendations || []).slice(0, 4).map((item, index) => (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {(data?.aiRecommendations || []).map((item, index) => (
             <RecommendationCard key={`${item.type}-${index}`} item={item} />
           ))}
-          {!data?.aiRecommendations?.length && <div className="text-sm font-semibold text-field-soil">No recommendations yet.</div>}
+          {!data?.aiRecommendations?.length && <div className="text-sm text-slate-500">No recommendations yet.</div>}
         </div>
       </section>
 
-      <section className="card p-5">
-        <SectionTitle flush>Recent Activity</SectionTitle>
-        <div className="mt-4 space-y-3">
-          {(data?.recentVetCases || []).slice(0, 2).map((record) => (
-            <ActivityItem key={record._id} icon={HeartPulse} title="Health record added" detail={`${record.animal?.animalId || "Animal"} - ${record.condition}`} meta={formatDate(record.recordDate)} />
-          ))}
-          {(data?.recentTransactions || []).slice(0, 3).map((item) => (
-            <ActivityItem key={item._id} icon={item.type === "income" ? ArrowUpCircle : ArrowDownCircle} title={`${item.type === "income" ? "Income" : "Expense"} recorded`} detail={`${item.description} - ${currency.format(item.amount)}`} meta={formatDate(item.transactionDate)} />
-          ))}
-          {!data?.recentTransactions?.length && !data?.recentVetCases?.length && <div className="text-sm font-semibold text-field-soil">No recent activity yet.</div>}
-        </div>
-      </section>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-4 font-black text-farm-950">Vaccination Alerts</h2>
+          <div className="space-y-3">
+            {(data?.vaccinationAlerts || []).map((record) => (
+              <div key={record._id} className="flex items-center justify-between rounded-lg border border-farm-100 bg-white p-3">
+                <div>
+                  <div className="font-bold text-farm-950">{record.vaccineName}</div>
+                  <div className="text-xs text-slate-500">{record.animal?.animalId} - due {formatDate(record.nextDueDate)}</div>
+                </div>
+                <span className={record.status === "overdue" ? "badge bg-red-50 text-red-700" : "badge bg-field-sage text-farm-900"}>{record.status}</span>
+              </div>
+            ))}
+            {!data?.vaccinationAlerts?.length && <div className="text-sm text-slate-500">No vaccination alerts.</div>}
+          </div>
+        </section>
 
-      <section className="card p-5">
-        <div className="flex items-center justify-between">
-          <SectionTitle flush>Income vs Expenses</SectionTitle>
-          <Link className="text-xs font-black text-farm-700" to="/reports">
-            Full Report
-          </Link>
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <FinanceChip label="Income" value={compactMoney(totals.income || 0)} />
-          <FinanceChip label="Expenses" value={compactMoney(totals.expenses || 0)} />
-          <FinanceChip label="Profit" value={compactMoney(totals.profitLoss || 0)} />
-        </div>
-        <MiniChart income={totals.income || 0} expenses={totals.expenses || 0} />
-      </section>
-    </div>
-  );
-}
-
-function SectionTitle({ children, flush = false }) {
-  return <h2 className={`${flush ? "" : ""} text-sm font-black uppercase tracking-[0.22em] text-field-soil`}>{children}</h2>;
-}
-
-function OverviewCard({ icon: Icon, label, value, detail, tone }) {
-  const tones = {
-    mint: "bg-emerald-50 text-farm-700",
-    rose: "bg-red-50 text-red-600",
-    lavender: "bg-violet-50 text-violet-600",
-    amber: "bg-amber-50 text-amber-600",
-    gold: "bg-yellow-50 text-yellow-700"
-  };
-
-  return (
-    <div className="card min-h-[150px] p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-sm font-black uppercase leading-5 tracking-wide text-field-soil">{label}</div>
-        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${tones[tone] || tones.mint}`}>
-          <Icon className="h-6 w-6" />
-        </span>
+        <section className="card p-5">
+          <h2 className="mb-4 font-black text-farm-950">Recent Vet Cases</h2>
+          <div className="space-y-3">
+            {(data?.recentVetCases || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-bold text-farm-950">{record.condition}</div>
+                  <span className="badge bg-white text-slate-600">{record.recoveryStatus}</span>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{record.animal?.animalId} - {formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>
+              </div>
+            ))}
+            {!data?.recentVetCases?.length && <div className="text-sm text-slate-500">No vet cases recorded.</div>}
+          </div>
+        </section>
       </div>
-      <div className="mt-8 text-4xl font-black leading-none text-farm-950">{value}</div>
-      {detail && <div className="mt-3 text-sm font-semibold text-field-soil">{detail}</div>}
-    </div>
-  );
-}
 
-function QuickAction({ to, icon: Icon, label }) {
-  return (
-    <Link to={to} className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-[1.4rem] bg-white p-3 text-center text-xs font-black text-farm-700 shadow-soft">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-farm-100">
-        <Icon className="h-5 w-5" />
-      </span>
-      {label}
-    </Link>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-4 font-black text-farm-950">Expected Births</h2>
+          <div className="space-y-3">
+            {(data?.expectedBirths || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
+                <div className="font-bold text-farm-950">{record.femaleAnimal?.animalId} expected {formatDate(record.expectedBirthDate)}</div>
+                <div className="mt-1 text-xs text-slate-500">Male: {record.maleAnimal?.animalId} - {record.breedingResult}</div>
+              </div>
+            ))}
+            {!data?.expectedBirths?.length && <div className="text-sm text-slate-500">No expected births in the next 45 days.</div>}
+          </div>
+        </section>
+        <section className="card p-5">
+          <h2 className="mb-4 font-black text-farm-950">Recent Births</h2>
+          <div className="space-y-3">
+            {(data?.recentBirths || []).map((record) => (
+              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
+                <div className="font-bold text-farm-950">{formatDate(record.birthDate)} - {record.numberOfOffspring} offspring</div>
+                <div className="mt-1 text-xs text-slate-500">Mother: {record.mother?.animalId} - Offspring: {(record.offspring || []).map((animal) => animal.animalId).join(", ")}</div>
+              </div>
+            ))}
+            {!data?.recentBirths?.length && <div className="text-sm text-slate-500">No birth records yet.</div>}
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
 function RecommendationCard({ item }) {
-  const colors = {
-    urgent: "bg-red-50 text-red-700",
-    high: "bg-orange-50 text-orange-700",
-    medium: "bg-yellow-50 text-yellow-700",
-    low: "bg-blue-50 text-blue-700"
+  return (
+    <div className="rounded-lg border border-farm-100 bg-field-cream p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm font-black capitalize text-farm-950">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-field-sage text-farm-800">
+            <Leaf className="h-4 w-4" />
+          </span>
+          {item.type}
+        </span>
+        <PriorityBadge value={item.priority} />
+      </div>
+      <div className="font-bold text-slate-800">{item.message}</div>
+      <div className="mt-2 text-sm text-slate-500">{item.suggestedAction}</div>
+    </div>
+  );
+}
+
+function PriorityBadge({ value }) {
+  const tones = {
+    urgent: "bg-red-100 text-red-800",
+    high: "bg-red-50 text-red-700",
+    medium: "bg-field-sage text-farm-900",
+    low: "bg-white text-slate-700"
+  };
+  return <span className={`badge ${tones[value] || tones.low}`}>{value}</span>;
+}
+
+function Signal({ icon: Icon, label, value, tone }) {
+  const tones = {
+    green: "bg-field-sage text-farm-800",
+    amber: "bg-amber-50 text-amber-700",
+    danger: "bg-red-50 text-red-700"
   };
 
   return (
-    <div className="flex gap-3 rounded-2xl bg-farm-50 p-3">
-      <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colors[item.priority] || colors.low}`}>
-        <Bot className="h-4 w-4" />
-      </span>
-      <div>
-        <div className="text-sm font-black text-farm-950">{item.message}</div>
-        <div className="mt-1 text-xs font-semibold text-field-soil">{item.suggestedAction}</div>
+    <div className="rounded-lg border border-farm-100 bg-white p-3">
+      <div className={`mb-3 inline-flex rounded-lg p-2 ${tones[tone] || tones.green}`}>
+        <Icon className="h-4 w-4" />
       </div>
+      <div className="text-xl font-black text-farm-950">{value}</div>
+      <div className="text-xs font-semibold text-slate-500">{label}</div>
     </div>
   );
 }
 
-function ActivityItem({ icon: Icon, title, detail, meta }) {
+function MiniBars({ title, items, labelKey }) {
+  const max = Math.max(...items.map((item) => item.count), 1);
   return (
-    <div className="flex gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-farm-100 text-farm-700">
-        <Icon className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="font-black text-farm-950">{title}</div>
-        <div className="truncate text-sm font-semibold text-field-soil">{detail}</div>
-      </div>
-      <div className="text-xs font-bold text-field-soil">{meta}</div>
-    </div>
-  );
-}
-
-function FinanceChip({ label, value }) {
-  return (
-    <div className="rounded-2xl bg-farm-50 p-3">
-      <div className="text-[11px] font-black uppercase tracking-wide text-field-soil">{label}</div>
-      <div className="mt-1 text-sm font-black text-farm-950">{value}</div>
-    </div>
-  );
-}
-
-function MiniChart({ income, expenses }) {
-  const max = Math.max(income, expenses, 1);
-  const incomeHeight = Math.max(18, (income / max) * 88);
-  const expenseHeight = Math.max(18, (expenses / max) * 88);
-
-  return (
-    <div className="mt-6 flex h-28 items-end justify-around rounded-2xl bg-farm-50 px-5 pb-4">
-      {["Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((month, index) => (
-        <div key={month} className="flex flex-col items-center gap-2">
-          <div className="flex h-24 items-end gap-1">
-            <span className="w-2 rounded-full bg-farm-700" style={{ height: `${Math.max(16, incomeHeight - index * 6)}px` }} />
-            <span className="w-2 rounded-full bg-field-soil/40" style={{ height: `${Math.max(14, expenseHeight - index * 4)}px` }} />
+    <div className="rounded-lg border border-farm-100 bg-field-cream p-4">
+      <div className="mb-3 text-sm font-black text-farm-950">{title}</div>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item[labelKey]}>
+            <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500">
+              <span>{item[labelKey]}</span>
+              <span>{item.count}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white">
+              <div className="h-2 rounded-full bg-farm-800" style={{ width: `${(item.count / max) * 100}%` }} />
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-field-soil">{month}</span>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
-function compactMoney(value) {
-  if (Math.abs(value) >= 1000) return `KES ${Math.round(value / 1000)}K`;
-  return `KES ${value}`;
-}
