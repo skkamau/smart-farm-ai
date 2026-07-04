@@ -1,4 +1,4 @@
-import { Baby, BarChart3, Beef, Bell, Bot, FileText, HeartHandshake, Leaf, LogOut, Menu, QrCode, ReceiptText, ShieldPlus, Sprout, Stethoscope, X } from "lucide-react";
+import { Baby, BarChart3, Beef, Bell, Bot, CloudSun, FileText, HeartHandshake, Leaf, LogOut, Menu, QrCode, ReceiptText, ShieldPlus, Sprout, Stethoscope, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ const nav = [
   { to: "/births", label: "Births", icon: Baby },
   { to: "/reports", label: "Reports", icon: FileText },
   { to: "/crops", label: "Crops", icon: Sprout },
+  { to: "/weather", label: "Weather", icon: CloudSun },
   { to: "/finance", label: "Finance", icon: ReceiptText }
 ];
 

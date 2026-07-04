@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bell, Bot, CalendarClock, Sprout } from "lucide-react";
+import { AlertTriangle, ArrowUpCircle, Beef, Bell, Bot, CalendarClock, CloudSun, Sprout } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -104,6 +104,27 @@ function buildDailyReminders(data) {
   const upcomingVaccine = data?.vaccinationAlerts?.find((record) => record.status === "upcoming");
   const vetCase = data?.recentVetCases?.[0];
   const expectedBirth = data?.expectedBirths?.[0];
+  const latestWeather = data?.latestWeather;
+
+  if (latestWeather) {
+    reminders.push({
+      key: "weather",
+      icon: CloudSun,
+      priority: latestWeather.impact === "high" ? "high" : latestWeather.impact === "medium" ? "medium" : "low",
+      title: `Weather: ${latestWeather.condition}`,
+      detail: `${latestWeather.temperature || latestWeather.temperature === 0 ? `${latestWeather.temperature}°C` : "Temp not set"} - Rainfall ${latestWeather.rainfall || 0} mm - Impact ${latestWeather.impact}`,
+      to: "/weather"
+    });
+  } else {
+    reminders.push({
+      key: "weather",
+      icon: CloudSun,
+      priority: "low",
+      title: "Record today's weather",
+      detail: "Add rainfall, temperature, and farm impact for today.",
+      to: "/weather"
+    });
+  }
 
   if (totals.overdueVaccinations > 0) {
     reminders.push({

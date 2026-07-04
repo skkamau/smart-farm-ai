@@ -5,6 +5,7 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import WeatherRecord from "../models/WeatherRecord.js";
 import { generateFarmIntelligence } from "../services/aiService.js";
 import { normalizeVaccination } from "../utils/vaccinations.js";
 
@@ -14,7 +15,7 @@ export async function getDashboard(req, res, next) {
     const today = new Date();
     const next45 = new Date();
     next45.setDate(today.getDate() + 45);
-    const [animals, crops, transactions, recentVetCases, vaccinations, recentBirths, expectedBirths] = await Promise.all([
+    const [animals, crops, transactions, recentVetCases, vaccinations, recentBirths, expectedBirths, latestWeather] = await Promise.all([
       Animal.find({ user }).lean(),
       Crop.find({ user }).lean(),
       Transaction.find({ user }).sort({ transactionDate: -1 }).limit(8).lean(),
@@ -26,7 +27,8 @@ export async function getDashboard(req, res, next) {
         .populate("maleAnimal", "animalId name species")
         .sort({ expectedBirthDate: 1 })
         .limit(8)
-        .lean()
+        .lean(),
+      WeatherRecord.findOne({ user }).sort({ recordDate: -1 }).lean()
     ]);
     const normalizedVaccinations = await Promise.all(vaccinations.map((record) => normalizeVaccination(record)));
 
@@ -79,6 +81,7 @@ export async function getDashboard(req, res, next) {
       vaccinationAlerts: normalizedVaccinations
         .filter((record) => ["upcoming", "overdue"].includes(record.status))
         .slice(0, 8),
+      latestWeather,
       aiRecommendations: intelligence.recommendations.slice(0, 6)
     });
   } catch (error) {

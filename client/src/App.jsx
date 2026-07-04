@@ -15,6 +15,7 @@ import Reports from "./pages/Reports";
 import Scanner from "./pages/Scanner";
 import SmartAssistant from "./pages/SmartAssistant";
 import Vaccinations from "./pages/Vaccinations";
+import Weather from "./pages/Weather";
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="health" element={<HealthRecords />} />
         <Route path="vaccinations" element={<Vaccinations />} />
+        <Route path="weather" element={<Weather />} />
         <Route path="scan" element={<Scanner />} />
         <Route path="scan/:qrCodeId" element={<Scanner />} />
       </Route>

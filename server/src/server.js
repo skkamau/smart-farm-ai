@@ -18,6 +18,7 @@ import healthRoutes from "./routes/healthRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import vaccinationRoutes from "./routes/vaccinationRoutes.js";
+import weatherRoutes from "./routes/weatherRoutes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
 dotenv.config();
@@ -59,6 +60,7 @@ app.use("/api/crops", cropRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/health-records", healthRoutes);
 app.use("/api/vaccinations", vaccinationRoutes);
+app.use("/api/weather", weatherRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
