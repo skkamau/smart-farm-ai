@@ -1,4 +1,4 @@
-import { CloudSun, Edit, Plus, Trash2 } from "lucide-react";
+import { CloudSun, DownloadCloud, Edit, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
@@ -14,6 +14,7 @@ const emptyWeather = { recordDate: inputDate(new Date()), condition: "Sunny", te
 export default function Weather() {
   const [records, setRecords] = useState([]);
   const [editing, setEditing] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   function load() {
     api.get("/weather").then(({ data }) => setRecords(data)).catch(() => toast.error("Could not load weather records"));
@@ -28,11 +29,40 @@ export default function Weather() {
     load();
   }
 
+  async function importCurrentWeather() {
+    setImporting(true);
+    try {
+      const coords = await getBrowserLocation();
+      await api.post("/weather/import-current", coords || {});
+      toast.success("Weather imported");
+      load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not import weather");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const latest = records[0];
 
   return (
     <div>
-      <PageHeader title="Weather" eyebrow="Daily farm conditions" action={<button className="btn-primary" onClick={() => setEditing(emptyWeather)}><Plus className="h-4 w-4" /> Add weather</button>} />
+      <PageHeader
+        title="Weather"
+        eyebrow="Daily farm conditions"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-muted" onClick={importCurrentWeather} disabled={importing}>
+              <DownloadCloud className="h-4 w-4" />
+              {importing ? "Importing..." : "Import from internet"}
+            </button>
+            <button className="btn-primary" onClick={() => setEditing(emptyWeather)}>
+              <Plus className="h-4 w-4" />
+              Add weather
+            </button>
+          </div>
+        }
+      />
 
       <section className="card mb-5 p-5">
         <div className="flex items-center gap-4">
@@ -42,7 +72,7 @@ export default function Weather() {
           <div>
             <div className="label">Latest weather</div>
             <div className="mt-1 text-lg font-black text-farm-950">
-              {latest ? `${latest.condition} ${latest.temperature || latest.temperature === 0 ? `- ${latest.temperature}°C` : ""}` : "No weather recorded yet"}
+              {latest ? `${latest.condition} ${latest.temperature || latest.temperature === 0 ? `- ${latest.temperature} C` : ""}` : "No weather recorded yet"}
             </div>
             {latest && <div className="text-sm text-slate-500">{formatDate(latest.recordDate)} - Rainfall {latest.rainfall || 0} mm - Impact {latest.impact}</div>}
           </div>
@@ -55,7 +85,7 @@ export default function Weather() {
         columns={[
           { key: "recordDate", label: "Date", render: (row) => formatDate(row.recordDate) },
           { key: "condition", label: "Condition" },
-          { key: "temperature", label: "Temp", render: (row) => (row.temperature || row.temperature === 0 ? `${row.temperature}°C` : "Not set") },
+          { key: "temperature", label: "Temp", render: (row) => (row.temperature || row.temperature === 0 ? `${row.temperature} C` : "Not set") },
           { key: "rainfall", label: "Rain", render: (row) => `${row.rainfall || 0} mm` },
           { key: "humidity", label: "Humidity", render: (row) => (row.humidity || row.humidity === 0 ? `${row.humidity}%` : "Not set") },
           { key: "impact", label: "Impact" }
@@ -102,7 +132,7 @@ function WeatherModal({ weather, onClose, onSaved }) {
             {conditions.map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
-        <Field label="Temperature (°C)" type="number" value={form.temperature} onChange={(v) => setForm({ ...form, temperature: v })} />
+        <Field label="Temperature (C)" type="number" value={form.temperature} onChange={(v) => setForm({ ...form, temperature: v })} />
         <Field label="Rainfall (mm)" type="number" value={form.rainfall} onChange={(v) => setForm({ ...form, rainfall: v })} />
         <Field label="Humidity (%)" type="number" value={form.humidity} onChange={(v) => setForm({ ...form, humidity: v })} />
         <Field label="Wind speed" type="number" value={form.windSpeed} onChange={(v) => setForm({ ...form, windSpeed: v })} />
@@ -127,4 +157,15 @@ function WeatherModal({ weather, onClose, onSaved }) {
 
 function Field({ label, value, onChange, type = "text", required }) {
   return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
+}
+
+function getBrowserLocation() {
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60 * 60 * 1000 }
+    );
+  });
 }
