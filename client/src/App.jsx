@@ -11,6 +11,7 @@ import Crops from "./pages/Crops";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
 import HealthRecords from "./pages/HealthRecords";
+import More from "./pages/More";
 import Reports from "./pages/Reports";
 import Scanner from "./pages/Scanner";
 import SmartAssistant from "./pages/SmartAssistant";
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="births" element={<BirthRecords />} />
         <Route path="assistant" element={<SmartAssistant />} />
         <Route path="alerts" element={<Alerts />} />
+        <Route path="more" element={<More />} />
         <Route path="crops" element={<Crops />} />
         <Route path="finance" element={<Finance />} />
         <Route path="reports" element={<Reports />} />

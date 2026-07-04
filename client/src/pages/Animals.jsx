@@ -1,7 +1,7 @@
-import { Edit, Eye, Plus, Trash2 } from "lucide-react";
+import { Baby, Beef, Edit, Eye, FileText, HeartHandshake, Plus, ShieldPlus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
 import PageHeader from "../components/PageHeader";
@@ -37,6 +37,13 @@ export default function Animals() {
   return (
     <div>
       <PageHeader title="Animals" eyebrow="Livestock records" action={<button className="btn-primary" onClick={() => setEditing(emptyAnimal)}><Plus className="h-4 w-4" /> Add animal</button>} />
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <AnimalToolCard to="/animals" label="All Animals" icon={Beef} />
+        <AnimalToolCard to="/vaccinations" label="Vaccines" icon={ShieldPlus} />
+        <AnimalToolCard to="/breeding" label="Breeding" icon={HeartHandshake} />
+        <AnimalToolCard to="/births" label="Births" icon={Baby} />
+        <AnimalToolCard to="/reports" label="Reports" icon={FileText} />
+      </div>
       <div className="mb-4 max-w-lg">
         <input className="input" placeholder="Search by ID, name, species, breed, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>
@@ -63,6 +70,17 @@ export default function Animals() {
       />
       {editing && <AnimalModal animal={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
     </div>
+  );
+}
+
+function AnimalToolCard({ to, label, icon: Icon }) {
+  return (
+    <Link to={to} className="card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-field-sage text-farm-800">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="font-black text-farm-950">{label}</span>
+    </Link>
   );
 }
 
