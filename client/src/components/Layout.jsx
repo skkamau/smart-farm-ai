@@ -29,11 +29,15 @@ const mobileNav = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const handleLogout = () => {
+    setOpen(false);
+    logout();
+  };
 
   return (
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-farm-100 bg-white/95 shadow-soft lg:block">
-        <Sidebar user={user} logout={logout} />
+        <Sidebar user={user} logout={handleLogout} />
       </aside>
 
       <header className="sticky top-0 z-20 border-b border-farm-100 bg-white/90 backdrop-blur lg:hidden">
@@ -44,9 +48,14 @@ export default function Layout() {
             </span>
             SmartFarm AI
           </div>
-          <button className="btn-muted px-2" onClick={() => setOpen(true)} aria-label="Open menu">
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="btn-muted px-2 text-red-700" onClick={handleLogout} aria-label="Logout" title="Logout">
+              <LogOut className="h-5 w-5" />
+            </button>
+            <button className="btn-muted px-2" onClick={() => setOpen(true)} aria-label="Open menu">
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -58,7 +67,7 @@ export default function Layout() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <Sidebar user={user} logout={logout} onNavigate={() => setOpen(false)} />
+            <Sidebar user={user} logout={handleLogout} onNavigate={() => setOpen(false)} />
           </div>
         </div>
       )}
@@ -81,7 +90,7 @@ export default function Layout() {
 
 function Sidebar({ user, logout, onNavigate }) {
   return (
-    <div className="flex h-full flex-col p-5">
+    <div className="flex h-full flex-col overflow-y-auto p-5">
       <div className="mb-7 rounded-2xl bg-farm-950 p-4 text-white shadow-soft">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/12">
@@ -120,7 +129,7 @@ function Sidebar({ user, logout, onNavigate }) {
         ))}
       </div>
 
-      <button onClick={logout} className="btn-muted mt-auto justify-start rounded-xl">
+      <button onClick={logout} className="btn-muted mt-5 justify-start rounded-xl text-red-700 lg:mt-auto">
         <LogOut className="h-4 w-4" />
         Logout
       </button>
