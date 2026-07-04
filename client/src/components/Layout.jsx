@@ -19,11 +19,11 @@ const nav = [
 ];
 
 const mobileNav = [
-  { to: "/", label: "Dashboard", icon: BarChart3 },
+  { to: "/", label: "Home", icon: BarChart3 },
   { to: "/animals", label: "Animals", icon: Beef },
+  { to: "/scan", label: "QR Scan", icon: QrCode },
   { to: "/crops", label: "Crops", icon: Sprout },
-  { to: "/finance", label: "Finance", icon: ReceiptText },
-  { to: "/assistant", label: "AI", icon: Bot }
+  { label: "More", icon: Menu, action: "menu" }
 ];
 
 export default function Layout() {
@@ -31,18 +31,18 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-farm-50">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-farm-100 bg-white/95 shadow-soft lg:block">
         <Sidebar user={user} logout={logout} />
       </aside>
 
-      <header className="sticky top-0 z-20 border-b border-farm-100 bg-white/90 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-20 hidden border-b border-farm-100 bg-white/80 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 font-black text-farm-950">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-farm-800 text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-farm-700 to-farm-500 text-white">
               <Leaf className="h-4 w-4" />
             </span>
-            SmartFarm AI
+            Smart Farm AI
           </div>
           <button className="btn-muted px-2" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu className="h-5 w-5" />
@@ -63,16 +63,25 @@ export default function Layout() {
         </div>
       )}
 
-      <main className="px-4 py-5 pb-24 lg:ml-72 lg:px-8 lg:py-8">
-        <Outlet />
+      <main className="pb-24 lg:ml-72 lg:px-8 lg:py-8">
+        <div className="mobile-shell px-4 py-5 lg:max-w-none lg:px-0 lg:py-0">
+          <Outlet />
+        </div>
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-2xl border border-farm-100 bg-white/95 p-1 shadow-lift backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-20 mx-auto grid max-w-[430px] grid-cols-5 rounded-[1.7rem] border border-farm-100 bg-white/95 p-1.5 shadow-lift backdrop-blur lg:hidden">
         {mobileNav.map((item) => (
-          <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-bold ${isActive ? "bg-field-sage text-farm-950" : "text-slate-500"}`} end={item.to === "/"}>
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
+          item.action === "menu" ? (
+            <button key={item.label} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-black text-field-soil" onClick={() => setOpen(true)} type="button">
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </button>
+          ) : (
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-black ${isActive ? "bg-farm-100 text-farm-700" : "text-field-soil"}`} end={item.to === "/"}>
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </NavLink>
+          )
         ))}
       </nav>
     </div>
@@ -81,14 +90,14 @@ export default function Layout() {
 
 function Sidebar({ user, logout, onNavigate }) {
   return (
-    <div className="flex h-full flex-col p-5">
-      <div className="mb-7 rounded-2xl bg-farm-950 p-4 text-white shadow-soft">
+    <div className="flex h-full flex-col overflow-y-auto p-5">
+      <div className="mb-7 rounded-[1.7rem] bg-gradient-to-br from-farm-700 to-farm-500 p-4 text-white shadow-soft">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/12">
             <Leaf className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-black">SmartFarm AI</div>
+            <div className="text-lg font-black">Smart Farm AI</div>
             <div className="text-xs font-semibold text-farm-100">Operations Suite</div>
           </div>
         </div>
@@ -120,7 +129,7 @@ function Sidebar({ user, logout, onNavigate }) {
         ))}
       </div>
 
-      <button onClick={logout} className="btn-muted mt-auto justify-start rounded-xl">
+      <button onClick={logout} className="btn-muted mt-5 justify-start rounded-xl lg:mt-auto">
         <LogOut className="h-4 w-4" />
         Logout
       </button>

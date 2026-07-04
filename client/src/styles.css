@@ -8,65 +8,66 @@
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 1px 1px, rgba(6, 69, 47, 0.08) 1px, transparent 0),
-    #f6f7f1;
-  background-size: 20px 20px;
-  color: #10261b;
+  background: #f2f6f0;
+  color: #18271e;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 @layer components {
   .card {
-    border: 1px solid #ebedd9;
-    border-radius: 0.5rem;
+    border: 1px solid rgba(39, 103, 73, 0.11);
+    border-radius: 1.5rem;
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 12px 30px rgba(8, 37, 26, 0.08);
+    box-shadow: 0 10px 26px rgba(39, 103, 73, 0.11);
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-primary {
     @apply btn;
-    background: #013d2a;
+    background: linear-gradient(135deg, #276749, #4aab76);
     color: #ffffff;
-    box-shadow: 0 12px 30px rgba(8, 37, 26, 0.08);
+    box-shadow: 0 16px 34px rgba(39, 103, 73, 0.24);
   }
 
   .btn-primary:hover {
-    background: #06452f;
+    filter: brightness(0.96);
   }
 
   .btn-muted {
     @apply btn;
-    border: 1px solid #ebedd9;
+    border: 1px solid rgba(39, 103, 73, 0.11);
     background: #ffffff;
-    color: #003522;
+    color: #276749;
   }
 
   .btn-muted:hover {
-    background: #f7f8f2;
+    background: #f2f6f0;
   }
 
   .input {
-    @apply w-full rounded-md bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400;
-    border: 1px solid #ebedd9;
-    color: #08251a;
+    @apply w-full rounded-3xl bg-white px-5 py-4 text-base font-semibold outline-none transition placeholder:text-slate-400;
+    border: 1px solid rgba(39, 103, 73, 0.14);
+    color: #18271e;
   }
 
   .input:focus {
-    border-color: #06452f;
-    box-shadow: 0 0 0 2px #ebedd9;
+    border-color: #276749;
+    box-shadow: 0 0 0 3px rgba(39, 103, 73, 0.11);
   }
 
   .label {
-    @apply text-[11px] font-black uppercase tracking-wide;
-    color: rgba(6, 69, 47, 0.7);
+    @apply text-[11px] font-black uppercase tracking-[0.22em];
+    color: #5e7d68;
   }
 
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold;
+  }
+
+  .mobile-shell {
+    @apply mx-auto w-full max-w-[430px];
   }
 }
