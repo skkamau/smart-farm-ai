@@ -1,4 +1,4 @@
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Plus, ShieldPlus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
@@ -19,11 +19,86 @@ const emptyRecord = {
   notes: ""
 };
 
+const sheepGoatSchedule = [
+  {
+    animal: "Sheep",
+    disease: "Enterotoxaemia",
+    bestTime: "First time any time, boost annually, and ewes 4-6 weeks before lambing.",
+    explanation: "Disease germs are within the animal, so disease can occur any time.",
+    signs: "Death of weaner lambs. Well-fed animals are more prone.",
+    notes: "Lambs from vaccinated mothers: 7 weeks, booster at 11 weeks. Lambs from unvaccinated mothers: 4 weeks, booster at 8 weeks."
+  },
+  {
+    animal: "Sheep",
+    disease: "Blue Tongue",
+    bestTime: "Just before rains.",
+    explanation: "Disease is spread by biting insects that multiply during rains.",
+    signs: "Swollen bluish tongue."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "Rift Valley Fever",
+    bestTime: "Just before rains.",
+    explanation: "Disease is spread by biting insects that multiply during rains.",
+    signs: "Deaths and yellow mucus membranes."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "ORF / Contagious Ecthyma",
+    bestTime: "During dry seasons.",
+    explanation: "Mostly spread through direct contact during dry spells as animals move in search of pasture.",
+    signs: "Wounds at the mouth corners."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "PPR",
+    bestTime: "During dry seasons.",
+    explanation: "Peste des Petits Ruminants caused by PPR virus. Mostly spread through direct contact during dry spells.",
+    signs: "Weight loss, diarrheas, abortion."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "Sheep and Goat Pox",
+    bestTime: "During dry seasons.",
+    explanation: "Mostly spread through direct contact during dry spells as animals move in search of pasture.",
+    signs: "Large pimples all over the body."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "Foot and Mouth Disease",
+    bestTime: "During dry seasons.",
+    explanation: "Mostly spread through direct contact during dry spells as animals move in search of pasture.",
+    signs: "Wounds on gums and feet."
+  },
+  {
+    animal: "Goat",
+    disease: "CCPP",
+    bestTime: "During dry seasons.",
+    explanation: "Contagious Caprine Pleuropneumonia caused by Mycoplasma capricolum. Mostly spread through direct contact during dry spells.",
+    signs: "Pneumonia, hardened liver-like lungs."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "Pasteurella",
+    bestTime: "Just before rains.",
+    explanation: "Cold weather stress triggers the disease.",
+    signs: "Pneumonia."
+  },
+  {
+    animal: "Sheep / Goat",
+    disease: "Anthrax",
+    bestTime: "Any time.",
+    explanation: "Bacteria are found in the soil.",
+    signs: "Sudden death, blood oozing from mouth, eyes, nose, etc."
+  }
+];
+
 export default function Vaccinations() {
   const [records, setRecords] = useState([]);
   const [animals, setAnimals] = useState([]);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState("");
+  const [showSchedule, setShowSchedule] = useState(true);
 
   function load() {
     Promise.all([api.get("/vaccinations"), api.get("/animals")])
@@ -48,6 +123,30 @@ export default function Vaccinations() {
   return (
     <div>
       <PageHeader title="Vaccinations" eyebrow="Immunization schedule" action={<button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add vaccine</button>} />
+      <section className="card mb-5 p-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-field-sage text-farm-800">
+              <ShieldPlus className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-black text-farm-950">Goat & Sheep Vaccination Schedule</h2>
+              <p className="mt-1 text-sm text-slate-500">Reference schedule from your uploaded certificate. Confirm dates and doses with your vet.</p>
+            </div>
+          </div>
+          <button className="btn-muted" onClick={() => setShowSchedule((value) => !value)}>
+            {showSchedule ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {showSchedule ? "Hide" : "Show"}
+          </button>
+        </div>
+        {showSchedule && (
+          <div className="mt-4 grid gap-3 xl:grid-cols-2">
+            {sheepGoatSchedule.map((item) => (
+              <ScheduleCard key={`${item.animal}-${item.disease}`} item={item} onUse={() => setEditing(scheduleToRecord(item))} />
+            ))}
+          </div>
+        )}
+      </section>
       <div className="mb-4 flex flex-wrap gap-2">
         {["", "completed", "upcoming", "overdue"].map((item) => (
           <button key={item || "all"} className={filter === item ? "btn-primary" : "btn-muted"} onClick={() => setFilter(item)}>{item || "all"}</button>
@@ -74,6 +173,36 @@ export default function Vaccinations() {
       />
       {editing && <VaccineModal record={editing} animals={animals} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
     </div>
+  );
+}
+
+function scheduleToRecord(item) {
+  return {
+    ...emptyRecord,
+    vaccineName: item.disease,
+    status: "upcoming",
+    dateGiven: "",
+    notes: `Schedule: ${item.animal}. Best time: ${item.bestTime} Explanation: ${item.explanation} Signs: ${item.signs}${item.notes ? ` Notes: ${item.notes}` : ""}`
+  };
+}
+
+function ScheduleCard({ item, onUse }) {
+  return (
+    <article className="rounded-lg border border-farm-100 bg-field-cream p-4">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <div className="label">{item.animal}</div>
+          <h3 className="mt-1 font-black text-farm-950">{item.disease}</h3>
+        </div>
+        <button className="btn-muted py-1.5 text-xs" onClick={onUse}>Use</button>
+      </div>
+      <div className="space-y-2 text-sm text-slate-600">
+        <p><span className="font-bold text-slate-800">Best time:</span> {item.bestTime}</p>
+        <p><span className="font-bold text-slate-800">Why:</span> {item.explanation}</p>
+        <p><span className="font-bold text-slate-800">Signs:</span> {item.signs}</p>
+        {item.notes && <p><span className="font-bold text-slate-800">Young stock:</span> {item.notes}</p>}
+      </div>
+    </article>
   );
 }
 
