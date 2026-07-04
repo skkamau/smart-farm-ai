@@ -24,6 +24,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
+const host = process.env.HOST || "0.0.0.0";
 const allowedOrigins = new Set([
   process.env.CLIENT_URL || "http://localhost:5173",
   "http://localhost:5173",
@@ -63,7 +64,7 @@ app.use(errorHandler);
 
 connectDB()
   .then(() => {
-    app.listen(port, () => console.log(`API running on http://localhost:${port}`));
+    app.listen(port, host, () => console.log(`API running on http://${host}:${port}`));
   })
   .catch((error) => {
     console.error("Database connection failed", error);

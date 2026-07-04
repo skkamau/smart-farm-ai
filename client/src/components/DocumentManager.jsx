@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../services/api";
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
+function resolveApiOrigin() {
+  const configured = import.meta.env.VITE_API_URL;
+  if (configured && configured !== "auto") return configured.replace(/\/api\/?$/, "");
+  return "";
+}
+
+const API_ORIGIN = resolveApiOrigin();
 
 export default function DocumentManager({ entityType, entityId }) {
   const [documents, setDocuments] = useState([]);
