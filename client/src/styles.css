@@ -18,7 +18,10 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-lg border border-farm-100 bg-white/95 shadow-soft;
+    border: 1px solid #ebedd9;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 12px 30px rgba(8, 37, 26, 0.08);
   }
 
   .btn {
@@ -26,19 +29,41 @@ body {
   }
 
   .btn-primary {
-    @apply btn bg-farm-800 text-white shadow-soft hover:bg-farm-700;
+    @apply btn;
+    background: #013d2a;
+    color: #ffffff;
+    box-shadow: 0 12px 30px rgba(8, 37, 26, 0.08);
+  }
+
+  .btn-primary:hover {
+    background: #06452f;
   }
 
   .btn-muted {
-    @apply btn border border-farm-100 bg-white text-farm-900 hover:bg-farm-50;
+    @apply btn;
+    border: 1px solid #ebedd9;
+    background: #ffffff;
+    color: #003522;
+  }
+
+  .btn-muted:hover {
+    background: #f7f8f2;
   }
 
   .input {
-    @apply w-full rounded-md border border-farm-100 bg-white px-3 py-2 text-sm text-farm-950 outline-none transition placeholder:text-slate-400 focus:border-farm-700 focus:ring-2 focus:ring-farm-100;
+    @apply w-full rounded-md bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400;
+    border: 1px solid #ebedd9;
+    color: #08251a;
+  }
+
+  .input:focus {
+    border-color: #06452f;
+    box-shadow: 0 0 0 2px #ebedd9;
   }
 
   .label {
-    @apply text-[11px] font-black uppercase tracking-wide text-farm-700/70;
+    @apply text-[11px] font-black uppercase tracking-wide;
+    color: rgba(6, 69, 47, 0.7);
   }
 
   .badge {

@@ -1,17 +1,24 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import { storageGet, storageRemove, storageSet } from "../utils/storage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("smartFarmUser");
-    return raw ? JSON.parse(raw) : null;
+    const raw = storageGet("smartFarmUser");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      storageRemove("smartFarmUser");
+      return null;
+    }
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("smartFarmToken");
+    const token = storageGet("smartFarmToken");
     if (!token) return;
 
     setLoading(true);
@@ -19,7 +26,7 @@ export function AuthProvider({ children }) {
       .get("/auth/me")
       .then(({ data }) => {
         setUser(data.user);
-        localStorage.setItem("smartFarmUser", JSON.stringify(data.user));
+        storageSet("smartFarmUser", JSON.stringify(data.user));
       })
       .catch(() => logout())
       .finally(() => setLoading(false));
@@ -27,21 +34,21 @@ export function AuthProvider({ children }) {
 
   async function login(payload) {
     const { data } = await api.post("/auth/login", payload);
-    localStorage.setItem("smartFarmToken", data.token);
-    localStorage.setItem("smartFarmUser", JSON.stringify(data.user));
+    storageSet("smartFarmToken", data.token);
+    storageSet("smartFarmUser", JSON.stringify(data.user));
     setUser(data.user);
   }
 
   async function signup(payload) {
     const { data } = await api.post("/auth/register", payload);
-    localStorage.setItem("smartFarmToken", data.token);
-    localStorage.setItem("smartFarmUser", JSON.stringify(data.user));
+    storageSet("smartFarmToken", data.token);
+    storageSet("smartFarmUser", JSON.stringify(data.user));
     setUser(data.user);
   }
 
   function logout() {
-    localStorage.removeItem("smartFarmToken");
-    localStorage.removeItem("smartFarmUser");
+    storageRemove("smartFarmToken");
+    storageRemove("smartFarmUser");
     setUser(null);
   }
 
