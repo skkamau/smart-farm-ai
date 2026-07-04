@@ -18,6 +18,14 @@ const nav = [
   { to: "/finance", label: "Finance", icon: ReceiptText }
 ];
 
+const mobileNav = [
+  { to: "/", label: "Dashboard", icon: BarChart3 },
+  { to: "/animals", label: "Animals", icon: Beef },
+  { to: "/crops", label: "Crops", icon: Sprout },
+  { to: "/finance", label: "Finance", icon: ReceiptText },
+  { to: "/assistant", label: "AI", icon: Bot }
+];
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -60,7 +68,7 @@ export default function Layout() {
       </main>
 
       <nav className="fixed inset-x-3 bottom-3 z-20 grid grid-cols-5 rounded-2xl border border-farm-100 bg-white/95 p-1 shadow-lift backdrop-blur lg:hidden">
-        {nav.slice(0, 5).map((item) => (
+        {mobileNav.map((item) => (
           <NavLink key={item.to} to={item.to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-bold ${isActive ? "bg-field-sage text-farm-950" : "text-slate-500"}`} end={item.to === "/"}>
             <item.icon className="h-5 w-5" />
             {item.label}
