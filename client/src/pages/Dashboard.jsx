@@ -1,5 +1,6 @@
-import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bot, CalendarClock, Leaf, Sprout } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Beef, Bell, Bot, CalendarClock, Sprout } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
@@ -17,40 +18,52 @@ export default function Dashboard() {
   }, []);
 
   const totals = data?.totals || {};
+  const reminders = useMemo(() => buildDailyReminders(data), [data]);
 
   return (
     <div>
       <PageHeader title="Dashboard" eyebrow="SmartFarm AI" />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Animals" value={totals.animals ?? "..."} detail="Active livestock records" />
+
+      <section className="card border-farm-200 bg-field-cream p-5">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <div className="label">Daily reminders</div>
+            <h2 className="mt-1 text-xl font-black text-farm-950">Notifications</h2>
+          </div>
+          <Link className="btn-muted py-1.5 text-xs" to="/alerts">
+            View all
+          </Link>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {reminders.map((item) => (
+            <ReminderCard key={item.key} item={item} />
+          ))}
+        </div>
+      </section>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Animals" value={totals.animals ?? "..."} detail={`${totals.sickAnimals || 0} sick animals`} />
         <StatCard label="Crops" value={totals.crops ?? "..."} detail={`${totals.readyCrops || 0} ready for harvest`} tone="slate" />
-        <StatCard label="Income" value={currency.format(totals.income || 0)} detail="Recorded farm income" />
         <StatCard label="Profit/Loss" value={currency.format(totals.profitLoss || 0)} detail="Income minus expenses" tone={(totals.profitLoss || 0) >= 0 ? "green" : "red"} />
-        <StatCard label="Pregnant" value={totals.pregnantAnimals || 0} detail={`${totals.expectedBirths || 0} births expected`} tone="amber" />
-        <StatCard label="Due for breeding" value={totals.dueForBreeding || 0} detail="Healthy female animals" tone="slate" />
+        <StatCard label="Vaccines" value={(totals.upcomingVaccinations || 0) + (totals.overdueVaccinations || 0)} detail={`${totals.overdueVaccinations || 0} overdue`} tone={(totals.overdueVaccinations || 0) > 0 ? "red" : "amber"} />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
         <section className="card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="label">Live farm signals</div>
-              <h2 className="mt-1 font-black text-farm-950">Operational Signals</h2>
+              <div className="label">Advisory</div>
+              <h2 className="mt-1 font-black text-farm-950">Smart Recommendations</h2>
             </div>
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-field-sage text-farm-800">
-              <AlertTriangle className="h-5 w-5" />
+              <Bot className="h-5 w-5" />
             </span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Signal icon={Beef} label="Sick animals" value={totals.sickAnimals || 0} tone="danger" />
-            <Signal icon={Sprout} label="Ready crops" value={totals.readyCrops || 0} tone="green" />
-            <Signal icon={ArrowDownCircle} label="Expenses" value={currency.format(totals.expenses || 0)} tone="amber" />
-            <Signal icon={CalendarClock} label="Upcoming vaccines" value={totals.upcomingVaccinations || 0} tone="amber" />
-            <Signal icon={AlertTriangle} label="Overdue vaccines" value={totals.overdueVaccinations || 0} tone="danger" />
-          </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <MiniBars title="Animal Status" items={data?.animalStatus || []} labelKey="status" />
-            <MiniBars title="Crop Status" items={data?.cropStatus || []} labelKey="status" />
+          <div className="space-y-3">
+            {(data?.aiRecommendations || []).slice(0, 3).map((item, index) => (
+              <RecommendationCard key={`${item.type}-${index}`} item={item} />
+            ))}
+            {!data?.aiRecommendations?.length && <div className="text-sm text-slate-500">No recommendations yet.</div>}
           </div>
         </section>
 
@@ -65,7 +78,7 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="space-y-3">
-            {(data?.recentTransactions || []).map((item) => (
+            {(data?.recentTransactions || []).slice(0, 4).map((item) => (
               <div key={item._id} className="flex items-center justify-between rounded-lg border border-farm-100 bg-field-cream p-3">
                 <div>
                   <div className="font-bold text-farm-950">{item.description}</div>
@@ -80,99 +93,114 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
-
-      <section className="card mt-5 p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div className="label">Advisory</div>
-            <h2 className="mt-1 font-black text-farm-950">Smart Recommendations</h2>
-          </div>
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-field-sage text-farm-800">
-            <Bot className="h-5 w-5" />
-          </span>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {(data?.aiRecommendations || []).map((item, index) => (
-            <RecommendationCard key={`${item.type}-${index}`} item={item} />
-          ))}
-          {!data?.aiRecommendations?.length && <div className="text-sm text-slate-500">No recommendations yet.</div>}
-        </div>
-      </section>
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Vaccination Alerts</h2>
-          <div className="space-y-3">
-            {(data?.vaccinationAlerts || []).map((record) => (
-              <div key={record._id} className="flex items-center justify-between rounded-lg border border-farm-100 bg-white p-3">
-                <div>
-                  <div className="font-bold text-farm-950">{record.vaccineName}</div>
-                  <div className="text-xs text-slate-500">{record.animal?.animalId} - due {formatDate(record.nextDueDate)}</div>
-                </div>
-                <span className={record.status === "overdue" ? "badge bg-red-50 text-red-700" : "badge bg-field-sage text-farm-900"}>{record.status}</span>
-              </div>
-            ))}
-            {!data?.vaccinationAlerts?.length && <div className="text-sm text-slate-500">No vaccination alerts.</div>}
-          </div>
-        </section>
-
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Recent Vet Cases</h2>
-          <div className="space-y-3">
-            {(data?.recentVetCases || []).map((record) => (
-              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-bold text-farm-950">{record.condition}</div>
-                  <span className="badge bg-white text-slate-600">{record.recoveryStatus}</span>
-                </div>
-                <div className="mt-1 text-xs text-slate-500">{record.animal?.animalId} - {formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>
-              </div>
-            ))}
-            {!data?.recentVetCases?.length && <div className="text-sm text-slate-500">No vet cases recorded.</div>}
-          </div>
-        </section>
-      </div>
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Expected Births</h2>
-          <div className="space-y-3">
-            {(data?.expectedBirths || []).map((record) => (
-              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
-                <div className="font-bold text-farm-950">{record.femaleAnimal?.animalId} expected {formatDate(record.expectedBirthDate)}</div>
-                <div className="mt-1 text-xs text-slate-500">Male: {record.maleAnimal?.animalId} - {record.breedingResult}</div>
-              </div>
-            ))}
-            {!data?.expectedBirths?.length && <div className="text-sm text-slate-500">No expected births in the next 45 days.</div>}
-          </div>
-        </section>
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Recent Births</h2>
-          <div className="space-y-3">
-            {(data?.recentBirths || []).map((record) => (
-              <div key={record._id} className="rounded-lg border border-farm-100 bg-field-cream p-3">
-                <div className="font-bold text-farm-950">{formatDate(record.birthDate)} - {record.numberOfOffspring} offspring</div>
-                <div className="mt-1 text-xs text-slate-500">Mother: {record.mother?.animalId} - Offspring: {(record.offspring || []).map((animal) => animal.animalId).join(", ")}</div>
-              </div>
-            ))}
-            {!data?.recentBirths?.length && <div className="text-sm text-slate-500">No birth records yet.</div>}
-          </div>
-        </section>
-      </div>
     </div>
+  );
+}
+
+function buildDailyReminders(data) {
+  const totals = data?.totals || {};
+  const reminders = [];
+  const overdueVaccine = data?.vaccinationAlerts?.find((record) => record.status === "overdue");
+  const upcomingVaccine = data?.vaccinationAlerts?.find((record) => record.status === "upcoming");
+  const vetCase = data?.recentVetCases?.[0];
+  const expectedBirth = data?.expectedBirths?.[0];
+
+  if (totals.overdueVaccinations > 0) {
+    reminders.push({
+      key: "overdue-vaccines",
+      icon: AlertTriangle,
+      priority: "urgent",
+      title: `${totals.overdueVaccinations} overdue vaccination${totals.overdueVaccinations === 1 ? "" : "s"}`,
+      detail: overdueVaccine ? `${overdueVaccine.animal?.animalId || "Animal"} - ${overdueVaccine.vaccineName}` : "Schedule overdue doses today.",
+      to: "/vaccinations"
+    });
+  }
+
+  if (totals.sickAnimals > 0) {
+    reminders.push({
+      key: "sick-animals",
+      icon: Beef,
+      priority: "high",
+      title: `${totals.sickAnimals} sick animal${totals.sickAnimals === 1 ? "" : "s"}`,
+      detail: vetCase ? `${vetCase.animal?.animalId || "Animal"} - ${vetCase.condition}` : "Review health records and recovery status.",
+      to: "/health"
+    });
+  }
+
+  if (totals.upcomingVaccinations > 0) {
+    reminders.push({
+      key: "upcoming-vaccines",
+      icon: CalendarClock,
+      priority: "medium",
+      title: `${totals.upcomingVaccinations} vaccine${totals.upcomingVaccinations === 1 ? "" : "s"} coming up`,
+      detail: upcomingVaccine ? `${upcomingVaccine.animal?.animalId || "Animal"} - due ${formatDate(upcomingVaccine.nextDueDate)}` : "Check upcoming vaccine schedule.",
+      to: "/vaccinations"
+    });
+  }
+
+  if (expectedBirth) {
+    reminders.push({
+      key: "expected-birth",
+      icon: Bell,
+      priority: "medium",
+      title: "Expected birth coming",
+      detail: `${expectedBirth.femaleAnimal?.animalId || "Animal"} expected ${formatDate(expectedBirth.expectedBirthDate)}`,
+      to: "/breeding"
+    });
+  }
+
+  if (totals.readyCrops > 0) {
+    reminders.push({
+      key: "ready-crops",
+      icon: Sprout,
+      priority: "low",
+      title: `${totals.readyCrops} crop${totals.readyCrops === 1 ? "" : "s"} ready`,
+      detail: "Check crop harvest plans and expected revenue.",
+      to: "/crops"
+    });
+  }
+
+  if (reminders.length === 0) {
+    reminders.push({
+      key: "all-clear",
+      icon: Bell,
+      priority: "low",
+      title: "No urgent reminders today",
+      detail: "Your farm records look calm. Add today's updates when ready.",
+      to: "/alerts"
+    });
+  }
+
+  return reminders.slice(0, 4);
+}
+
+function ReminderCard({ item }) {
+  const Icon = item.icon;
+  const tones = {
+    urgent: "border-red-100 bg-red-50 text-red-700",
+    high: "border-red-100 bg-red-50 text-red-700",
+    medium: "border-amber-100 bg-amber-50 text-amber-700",
+    low: "border-farm-100 bg-white text-farm-700"
+  };
+
+  return (
+    <Link to={item.to} className={`flex gap-3 rounded-lg border p-4 ${tones[item.priority] || tones.low}`}>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/70">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span>
+        <span className="block font-black text-farm-950">{item.title}</span>
+        <span className="mt-1 block text-sm font-semibold text-slate-600">{item.detail}</span>
+      </span>
+    </Link>
   );
 }
 
 function RecommendationCard({ item }) {
   return (
     <div className="rounded-lg border border-farm-100 bg-field-cream p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2 text-sm font-black capitalize text-farm-950">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-field-sage text-farm-800">
-            <Leaf className="h-4 w-4" />
-          </span>
-          {item.type}
-        </span>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-sm font-black capitalize text-farm-950">{item.type}</span>
         <PriorityBadge value={item.priority} />
       </div>
       <div className="font-bold text-slate-800">{item.message}</div>
@@ -190,44 +218,3 @@ function PriorityBadge({ value }) {
   };
   return <span className={`badge ${tones[value] || tones.low}`}>{value}</span>;
 }
-
-function Signal({ icon: Icon, label, value, tone }) {
-  const tones = {
-    green: "bg-field-sage text-farm-800",
-    amber: "bg-amber-50 text-amber-700",
-    danger: "bg-red-50 text-red-700"
-  };
-
-  return (
-    <div className="rounded-lg border border-farm-100 bg-white p-3">
-      <div className={`mb-3 inline-flex rounded-lg p-2 ${tones[tone] || tones.green}`}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="text-xl font-black text-farm-950">{value}</div>
-      <div className="text-xs font-semibold text-slate-500">{label}</div>
-    </div>
-  );
-}
-
-function MiniBars({ title, items, labelKey }) {
-  const max = Math.max(...items.map((item) => item.count), 1);
-  return (
-    <div className="rounded-lg border border-farm-100 bg-field-cream p-4">
-      <div className="mb-3 text-sm font-black text-farm-950">{title}</div>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item[labelKey]}>
-            <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500">
-              <span>{item[labelKey]}</span>
-              <span>{item.count}</span>
-            </div>
-            <div className="h-2 rounded-full bg-white">
-              <div className="h-2 rounded-full bg-farm-800" style={{ width: `${(item.count / max) * 100}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
