@@ -82,7 +82,7 @@ export default function Crops() {
 
   return (
     <div>
-      <PageHeader title="Crops" eyebrow="Fields, harvests and crop costs" action={<div className="flex flex-wrap gap-2"><ExportButtons type="crops" basename="crops" /><ExportButtons type="crop-expenses" basename="crop_expenses" /><button className="btn-primary" onClick={() => setEditing(emptyCrop)}><Plus className="h-4 w-4" /> Add crop</button></div>} />
+      <PageHeader title="Crops" eyebrow="Fields, harvests and crop costs" action={<div className="flex flex-wrap gap-2"><ExportButtons type="crops" basename="crops" /><button className="btn-primary" onClick={() => setEditing(emptyCrop)}><Plus className="h-4 w-4" /> Add crop</button></div>} />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Crop expenses" value={currency.format(expenses.reduce((sum, expense) => sum + recordAmount(expense), 0))} tone="amber" />
