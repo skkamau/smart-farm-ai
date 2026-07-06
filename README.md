@@ -275,6 +275,43 @@ Document uploads are available on:
 
 Allowed upload types include PDF, JPG, PNG, WEBP, CSV, XLSX, DOC, and DOCX. Maximum upload size is 5 MB. Uploaded files are stored in `server/uploads/`, and metadata is stored in MongoDB.
 
+## Farm Finance Ledger
+
+The Finance page is modeled around the Subukia goat shed workbook records instead of a generic accounting screen.
+
+Finance is available from `More > Finance` in the bottom navigation. It includes these sections:
+
+- Overview
+- Income
+- Expenses
+- Construction
+- Equipment
+- Feed
+- Fuel
+- Consumables
+- Cash & Savings
+- Reports
+
+Records support farm-style fields such as date, item, description, quantity, unit, unit cost, amount, payment method, quantity in, quantity out, balance, month, cash, savings, remarks, and notes.
+
+Automatic calculations include:
+
+- total cost from quantity and unit cost
+- stock balance from quantity in minus quantity out
+- income totals
+- expense totals
+- category totals
+- monthly expense totals
+- profit/loss summary
+
+Crop, vet/health, and vaccination costs can now be linked to real farm records:
+
+- Crop expenses are entered from the Crops page and saved as linked Finance transactions.
+- Health/vet charges are entered from Health records and synced to Finance.
+- Vaccination costs are entered from Vaccinations and synced to Finance.
+- Finance can filter by crop, animal, category, payment method, and date.
+- Animal profiles show total health cost, vaccination cost, recent treatments, and follow-up reminders.
+
 ## GitHub
 
 This folder is ready to commit and push.

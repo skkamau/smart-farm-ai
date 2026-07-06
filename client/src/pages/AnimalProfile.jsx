@@ -7,6 +7,7 @@ import PageHeader from "../components/PageHeader";
 import DocumentManager from "../components/DocumentManager";
 import api from "../services/api";
 import { currency, formatDate } from "../utils";
+import { downloadIndividual } from "../utils/downloads";
 
 export default function AnimalProfile() {
   const { id } = useParams();
@@ -36,13 +37,7 @@ export default function AnimalProfile() {
   }
 
   async function downloadAnimalRecord() {
-    const { data } = await api.get(`/reports/animal/${animal._id}/pdf`, { responseType: "blob" });
-    const url = URL.createObjectURL(data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${animal.animalId}-record.pdf`;
-    link.click();
-    URL.revokeObjectURL(url);
+    await downloadIndividual("animal", animal._id, "pdf", `animal_${animal.animalId}_report.pdf`);
   }
 
   function printQr() {
@@ -78,6 +73,10 @@ export default function AnimalProfile() {
     return <div className="text-slate-600">Loading animal profile...</div>;
   }
 
+  const healthCost = (animal.healthRecords || []).reduce((sum, record) => sum + Number(record.totalCost || 0), 0);
+  const vaccinationCost = (animal.vaccinationRecords || []).reduce((sum, record) => sum + Number(record.totalCost || 0), 0);
+  const followUps = (animal.healthRecords || []).filter((record) => record.followUpDate);
+
   return (
     <div>
       <PageHeader
@@ -97,8 +96,10 @@ export default function AnimalProfile() {
           <div className="mb-4">
             <button className="btn-primary" onClick={downloadAnimalRecord}>
               <Download className="h-4 w-4" />
-              Download animal record
+              Download Animal Report
             </button>
+            <button className="btn-muted ml-2" onClick={() => downloadIndividual("animal", animal._id, "xlsx", `animal_${animal.animalId}_report.xlsx`)}>Excel</button>
+            <button className="btn-muted ml-2" onClick={() => downloadIndividual("animal", animal._id, "csv", `animal_${animal.animalId}_report.csv`)}>CSV</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Info label="Animal ID" value={animal.animalId} />
@@ -144,6 +145,21 @@ export default function AnimalProfile() {
       </div>
 
       <section className="card mt-5 p-5">
+        <h2 className="mb-4 font-bold text-farm-950">Animal Health Costs</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Info label="Total health cost" value={currency.format(healthCost)} />
+          <Info label="Vaccination cost" value={currency.format(vaccinationCost)} />
+          <Info label="Combined animal care cost" value={currency.format(healthCost + vaccinationCost)} />
+        </div>
+        <div className="mt-4 rounded-lg bg-field-cream p-4">
+          <div className="label">Follow-up reminders</div>
+          <div className="mt-2 text-sm text-slate-700">
+            {followUps.length ? followUps.map((record) => `${record.condition}: ${formatDate(record.followUpDate)}`).join(", ") : "No follow-up dates set."}
+          </div>
+        </div>
+      </section>
+
+      <section className="card mt-5 p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="font-bold text-farm-950">Family Tree</h2>
           <Link className="btn-muted" to="/births"><Plus className="h-4 w-4" /> Add birth</Link>
@@ -182,6 +198,8 @@ export default function AnimalProfile() {
                   <HistoryLine label="Diagnosis" value={record.diagnosis} />
                   <HistoryLine label="Treatment" value={record.treatment} />
                   <HistoryLine label="Medication" value={[record.medication, record.dosage].filter(Boolean).join(" - ")} />
+                  <HistoryLine label="Cost" value={currency.format(record.totalCost || 0)} />
+                  <HistoryLine label="Follow-up" value={formatDate(record.followUpDate)} />
                 </div>
                 {record.notes && <p className="mt-3 text-sm text-slate-600">{record.notes}</p>}
               </div>
@@ -213,6 +231,7 @@ export default function AnimalProfile() {
                   <HistoryLine label="Next due" value={formatDate(record.nextDueDate)} />
                   <HistoryLine label="Vet" value={record.vetName || "Not set"} />
                   <HistoryLine label="Batch" value={record.batchNumber || "Not set"} />
+                  <HistoryLine label="Cost" value={currency.format(record.totalCost || 0)} />
                 </div>
                 {record.notes && <p className="mt-3 text-sm text-slate-600">{record.notes}</p>}
               </div>

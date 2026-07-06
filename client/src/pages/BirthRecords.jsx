@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { formatDate, inputDate } from "../utils";
@@ -33,7 +34,7 @@ export default function BirthRecords() {
 
   return (
     <div>
-      <PageHeader title="Birth Records" eyebrow="Offspring and parent linking" action={<button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add birth</button>} />
+      <PageHeader title="Birth Records" eyebrow="Offspring and parent linking" action={<div className="flex flex-wrap gap-2"><ExportButtons type="births" basename="birth_records" /><ExportButtons type="family" basename="parent_children_records" pdf={false} /><button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add birth</button></div>} />
       <DataTable
         rows={records}
         emptyText="No birth records yet."

@@ -7,7 +7,7 @@ const moreItems = [
   { to: "/alerts", label: "Alerts", description: "Notifications and priorities", icon: Bell },
   { to: "/scan", label: "Scan QR", description: "Open animal profiles by QR", icon: QrCode },
   { to: "/weather", label: "Weather", description: "Daily farm conditions", icon: CloudSun },
-  { to: "/finance", label: "Finance", description: "Income, expenses, profit", icon: ReceiptText }
+  { to: "/finance", label: "Finance", description: "Income, costs, stock and savings", icon: ReceiptText }
 ];
 
 export default function More() {

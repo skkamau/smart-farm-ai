@@ -8,9 +8,16 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import WeatherRecord from "../models/WeatherRecord.js";
+import Document from "../models/Document.js";
 import { generateFarmIntelligence } from "./aiService.js";
 
-const reportTypes = ["animals", "health", "vaccinations", "breeding", "births", "crops", "financial", "ai"];
+const reportTypes = [
+  "animals", "health", "vet", "vaccinations", "breeding", "births", "family", "crops", "crop-expenses",
+  "financial", "finance", "construction", "equipment", "feed", "fuel", "consumables", "cash-savings",
+  "animal-health", "weather", "alerts", "monthly-expenses", "expense-by-category", "vet-costs",
+  "health-costs", "full-summary", "ai"
+];
 
 function fmt(value) {
   if (value === null || value === undefined || value === "") return "";
@@ -84,7 +91,67 @@ function moneyRows(transactions) {
   ];
 }
 
-export async function getReportRows(user, type) {
+function transactionQuery(user, filters = {}, section) {
+  const query = { user };
+  if (section) query.financeSection = section;
+  if (filters.financeSection) query.financeSection = filters.financeSection;
+  if (filters.crop) query.crop = filters.crop;
+  if (filters.animal) query.animal = filters.animal;
+  if (filters.category) query.category = filters.category;
+  if (filters.paymentMethod) query.paymentMethod = filters.paymentMethod;
+  if (filters.type) query.type = filters.type;
+  if (filters.dateFrom || filters.dateTo) {
+    query.transactionDate = {};
+    if (filters.dateFrom) query.transactionDate.$gte = new Date(filters.dateFrom);
+    if (filters.dateTo) query.transactionDate.$lte = new Date(filters.dateTo);
+  }
+  return query;
+}
+
+function transactionRows(rows) {
+  return rows.map((r) => ({
+    Date: r.transactionDate,
+    Type: r.type,
+    Section: r.financeSection,
+    Category: r.category,
+    Crop: r.crop ? `${r.crop.name || ""} ${r.crop.field || ""} ${r.crop.plot || ""}`.trim() : "",
+    Animal: r.animal ? `${r.animal.animalId || ""} ${r.animal.name || r.animal.species || ""}`.trim() : "",
+    Item: r.item,
+    Description: r.description,
+    Quantity: r.quantity,
+    Unit: r.unit,
+    UnitCost: r.unitCost,
+    TotalCost: r.totalCost || r.amount,
+    PaymentMethod: r.paymentMethod,
+    SupplierVendor: r.supplierVendor,
+    QuantityIn: r.quantityIn,
+    QuantityOut: r.quantityOut,
+    Balance: r.balance,
+    Cash: r.cashAmount,
+    Savings: r.savingsAmount,
+    Notes: r.notes || r.remarks
+  }));
+}
+
+async function getTransactionRows(user, filters, section) {
+  const rows = await Transaction.find(transactionQuery(user, filters, section))
+    .populate("crop", "name field plot")
+    .populate("animal", "animalId name species")
+    .sort({ transactionDate: -1, createdAt: -1 })
+    .lean();
+  return transactionRows(rows);
+}
+
+function expenseSummaryRows(rows, groupKey) {
+  const out = {};
+  rows.filter((row) => row.Type === "expense").forEach((row) => {
+    const key = row[groupKey] || "Unspecified";
+    out[key] = (out[key] || 0) + Number(row.TotalCost || 0);
+  });
+  return Object.entries(out).map(([Name, Amount]) => ({ Name, Amount }));
+}
+
+export async function getReportRows(user, type, filters = {}) {
   if (!reportTypes.includes(type)) throw new Error("Unsupported report type");
   if (type === "animals") {
     const animals = await Animal.find({ user }).populate("mother", "animalId name").populate("father", "animalId name").populate("children", "animalId name").lean();
@@ -118,11 +185,12 @@ export async function getReportRows(user, type) {
   }
   if (type === "health") {
     const rows = await HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).lean();
-    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Date: r.recordDate, Condition: r.condition, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Treatment: r.treatment, Medication: r.medication, Dosage: r.dosage, Vet: r.vetName, Status: r.recoveryStatus, Notes: r.notes }));
+    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Date: r.recordDate, Condition: r.condition, ServiceType: r.serviceType, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Treatment: r.treatment, Medication: r.medication, Dosage: r.dosage, Vet: r.vetName, ServiceCharge: r.serviceCharge, MedicineCost: r.medicineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, FollowUpDate: r.followUpDate, Status: r.recoveryStatus, Notes: r.notes }));
   }
+  if (type === "vet") return getReportRows(user, "health", filters);
   if (type === "vaccinations") {
     const rows = await VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).lean();
-    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Vaccine: r.vaccineName, DateGiven: r.dateGiven, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, Status: r.status, Notes: r.notes }));
+    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Vaccine: r.vaccineName, DateGiven: r.dateGiven, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, ServiceCharge: r.serviceCharge, VaccineCost: r.vaccineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, Status: r.status, Notes: r.notes }));
   }
   if (type === "breeding") {
     const rows = await BreedingRecord.find({ user }).populate("femaleAnimal", "animalId name").populate("maleAnimal", "animalId name").sort({ matingDate: -1 }).lean();
@@ -132,13 +200,62 @@ export async function getReportRows(user, type) {
     const rows = await BirthRecord.find({ user }).populate("mother", "animalId name").populate("father", "animalId name").populate("offspring", "animalId name").sort({ birthDate: -1 }).lean();
     return rows.map((r) => ({ Mother: r.mother?.animalId, Father: r.father?.animalId, BirthDate: r.birthDate, OffspringCount: r.numberOfOffspring, Offspring: (r.offspring || []).map((a) => a.animalId).join("; "), Complications: r.birthComplications, VetNotes: r.vetNotes, Notes: r.notes }));
   }
+  if (type === "family") {
+    const animals = await Animal.find({ user }).populate("mother", "animalId name").populate("father", "animalId name").populate("children", "animalId name").sort({ animalId: 1 }).lean();
+    return animals.map((a) => ({ AnimalID: a.animalId, Name: a.name, Mother: a.mother?.animalId, Father: a.father?.animalId, Children: (a.children || []).map((c) => c.animalId).join("; "), ChildCount: (a.children || []).length }));
+  }
   if (type === "crops") {
     const rows = await Crop.find({ user }).sort({ harvestDate: 1 }).lean();
     return rows.map((r) => ({ Crop: r.name, Field: r.field, Plot: r.plot, Area: r.area, PlantingDate: r.plantingDate, HarvestDate: r.harvestDate, ExpectedYield: r.expectedYield, ActualYield: r.actualYield, Costs: r.cost, Revenue: r.revenue, ProfitLoss: (r.revenue || 0) - (r.cost || 0), Status: r.status, Notes: r.notes }));
   }
   if (type === "financial") {
-    const rows = await Transaction.find({ user }).sort({ transactionDate: -1 }).lean();
-    return [...moneyRows(rows), ...rows.map((r) => ({ Metric: r.description, Amount: r.type === "income" ? r.amount : -r.amount, Type: r.type, Category: r.category, Date: r.transactionDate, Notes: r.notes }))];
+    const rows = await Transaction.find(transactionQuery(user, filters)).sort({ transactionDate: -1 }).lean();
+    return [...moneyRows(rows), ...transactionRows(rows)];
+  }
+  if (type === "finance") return getTransactionRows(user, filters);
+  if (type === "crop-expenses") return getTransactionRows(user, filters, "CropExpense");
+  if (type === "animal-health" || type === "vet-costs" || type === "health-costs") return getTransactionRows(user, filters, "AnimalHealth");
+  if (type === "construction") return getTransactionRows(user, filters, "Construction");
+  if (type === "equipment") return getTransactionRows(user, filters, "Equipment");
+  if (type === "feed") return getTransactionRows(user, filters, "Feed");
+  if (type === "fuel") return getTransactionRows(user, filters, "Fuel");
+  if (type === "consumables") return getTransactionRows(user, filters, "Consumables");
+  if (type === "cash-savings") return getTransactionRows(user, filters, "CashSavings");
+  if (type === "monthly-expenses") {
+    const rows = await getTransactionRows(user, filters);
+    return expenseSummaryRows(rows.map((row) => ({ ...row, Month: row.Date ? new Date(row.Date).toISOString().slice(0, 7) : "" })), "Month");
+  }
+  if (type === "expense-by-category") {
+    const rows = await getTransactionRows(user, filters);
+    return expenseSummaryRows(rows, "Category");
+  }
+  if (type === "weather") {
+    const rows = await WeatherRecord.find({ user }).sort({ date: -1 }).lean();
+    return rows.map((r) => ({ Date: r.recordDate, Condition: r.condition, Temperature: r.temperature, Humidity: r.humidity, Rainfall: r.rainfall, Wind: r.windSpeed, Impact: r.impact, Notes: r.notes }));
+  }
+  if (type === "alerts") {
+    const intelligence = await generateFarmIntelligence(user);
+    return intelligence.alerts.map((r) => ({ Type: r.type, Priority: r.priority, Related: r.related?.label || r.related?.kind, Message: r.message, SuggestedAction: r.suggestedAction, DateCreated: r.dateCreated }));
+  }
+  if (type === "full-summary") {
+    const [animals, crops, transactions, health, vaccinations] = await Promise.all([
+      Animal.countDocuments({ user }),
+      Crop.countDocuments({ user }),
+      Transaction.find(transactionQuery(user, filters)).lean(),
+      HealthRecord.countDocuments({ user }),
+      VaccinationRecord.countDocuments({ user })
+    ]);
+    const income = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const expenses = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    return [
+      { Metric: "Animals", Value: animals },
+      { Metric: "Crops", Value: crops },
+      { Metric: "Health records", Value: health },
+      { Metric: "Vaccinations", Value: vaccinations },
+      { Metric: "Income", Value: income },
+      { Metric: "Expenses", Value: expenses },
+      { Metric: "Profit/Loss", Value: income - expenses }
+    ];
   }
   const intelligence = await generateFarmIntelligence(user);
   return intelligence.recommendations.map((r) => ({ Type: r.type, Priority: r.priority, Related: r.related?.label || r.related?.kind, Message: r.message, SuggestedAction: r.suggestedAction, DateCreated: r.dateCreated }));
@@ -191,18 +308,53 @@ export async function sendPdf(res, name, rows, type) {
   doc.end();
 }
 
-export async function sendIndividualAnimalPdf(res, user, animalId) {
+async function getIndividualAnimalData(user, animalId) {
   const animal = await Animal.findOne({ _id: animalId, user }).populate("mother", "animalId name").populate("father", "animalId name").populate("children", "animalId name");
-  if (!animal) {
-    res.status(404).json({ message: "Animal not found" });
-    return;
-  }
-  const [health, vaccinations, breeding, births] = await Promise.all([
+  if (!animal) return null;
+  const [health, vaccinations, breeding, births, costs] = await Promise.all([
     HealthRecord.find({ user, animal: animal._id }).sort({ recordDate: -1 }).lean(),
     VaccinationRecord.find({ user, animal: animal._id }).sort({ nextDueDate: 1 }).lean(),
     BreedingRecord.find({ user, $or: [{ femaleAnimal: animal._id }, { maleAnimal: animal._id }] }).populate("femaleAnimal", "animalId name").populate("maleAnimal", "animalId name").sort({ matingDate: -1 }).lean(),
-    BirthRecord.find({ user, $or: [{ mother: animal._id }, { father: animal._id }, { offspring: animal._id }] }).populate("mother", "animalId name").populate("father", "animalId name").populate("offspring", "animalId name").sort({ birthDate: -1 }).lean()
+    BirthRecord.find({ user, $or: [{ mother: animal._id }, { father: animal._id }, { offspring: animal._id }] }).populate("mother", "animalId name").populate("father", "animalId name").populate("offspring", "animalId name").sort({ birthDate: -1 }).lean(),
+    Transaction.find({ user, animal: animal._id }).sort({ transactionDate: -1 }).lean()
   ]);
+  return { animal, health, vaccinations, breeding, births, costs };
+}
+
+function individualAnimalRows(data) {
+  const { animal, health, vaccinations, breeding, births, costs } = data;
+  return [
+    { Section: "Basic", Field: "Animal ID", Value: animal.animalId },
+    { Section: "Basic", Field: "Name", Value: animal.name },
+    { Section: "Basic", Field: "Species", Value: animal.species },
+    { Section: "Basic", Field: "Breed", Value: animal.breed },
+    { Section: "Basic", Field: "Gender", Value: animal.gender },
+    { Section: "Basic", Field: "Date of birth", Value: animal.dateOfBirth },
+    { Section: "Family", Field: "Mother", Value: animal.mother ? `${animal.mother.animalId} - ${animal.mother.name || ""}` : "" },
+    { Section: "Family", Field: "Father", Value: animal.father ? `${animal.father.animalId} - ${animal.father.name || ""}` : "" },
+    { Section: "Family", Field: "Children", Value: (animal.children || []).map((child) => `${child.animalId} - ${child.name || ""}`).join("; ") },
+    { Section: "QR", Field: "QR code", Value: animal.qrCodeValue },
+    ...health.map((r) => ({ Section: "Health", Date: r.recordDate, Field: r.condition, Treatment: r.treatment, Medication: r.medication, Vet: r.vetName, TotalCost: r.totalCost, Notes: r.notes })),
+    ...vaccinations.map((r) => ({ Section: "Vaccination", Date: r.dateGiven, Field: r.vaccineName, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, TotalCost: r.totalCost, Notes: r.notes })),
+    ...breeding.map((r) => ({ Section: "Breeding", Date: r.matingDate, Field: `${r.femaleAnimal?.animalId} x ${r.maleAnimal?.animalId}`, Status: r.pregnancyStatus, Result: r.breedingResult, Notes: r.notes })),
+    ...births.map((r) => ({ Section: "Birth", Date: r.birthDate, Field: `Offspring ${(r.offspring || []).map((a) => a.animalId).join(", ")}`, Mother: r.mother?.animalId, Father: r.father?.animalId, Notes: r.notes })),
+    ...costs.map((r) => ({ Section: "Finance", Date: r.transactionDate, Field: r.item || r.category, Description: r.description, Category: r.category, TotalCost: r.totalCost || r.amount, PaymentMethod: r.paymentMethod }))
+  ];
+}
+
+export async function sendIndividualAnimal(res, user, animalId, format = "pdf") {
+  const data = await getIndividualAnimalData(user, animalId);
+  if (!data) return res.status(404).json({ message: "Animal not found" });
+  const name = `animal_${data.animal.animalId}_report`;
+  const rows = individualAnimalRows(data);
+  if (format === "csv") return sendCsv(res, name, rows);
+  if (format === "xlsx") return sendExcel(res, name, rows);
+  if (format !== "pdf") return res.status(400).json({ message: "Unsupported export format" });
+  return sendIndividualAnimalPdf(res, data);
+}
+
+async function sendIndividualAnimalPdf(res, data) {
+  const { animal, health, vaccinations, breeding, births, costs } = data;
 
   const doc = new PDFDocument({ margin: 42, size: "A4" });
   res.setHeader("Content-Type", "application/pdf");
@@ -241,6 +393,12 @@ export async function sendIndividualAnimalPdf(res, user, animalId) {
     Births: births.length
   });
 
+  barChart(doc, "Animal Cost Summary", {
+    "Health costs": health.reduce((sum, r) => sum + Number(r.totalCost || 0), 0),
+    "Vaccination costs": vaccinations.reduce((sum, r) => sum + Number(r.totalCost || 0), 0),
+    "Linked finance costs": costs.reduce((sum, r) => sum + Number(r.totalCost || r.amount || 0), 0)
+  });
+
   section(doc, "Health History");
   health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.recoveryStatus} - ${r.treatment || ""}`)) : bullet(doc, "Records", "None");
 
@@ -258,12 +416,49 @@ export async function sendIndividualAnimalPdf(res, user, animalId) {
   doc.end();
 }
 
-export async function sendIndividualCropPdf(res, user, cropId) {
+async function getIndividualCropData(user, cropId) {
   const crop = await Crop.findOne({ _id: cropId, user }).lean();
-  if (!crop) {
-    res.status(404).json({ message: "Crop not found" });
-    return;
-  }
+  if (!crop) return null;
+  const expenses = await Transaction.find({ user, crop: crop._id }).sort({ transactionDate: -1 }).lean();
+  return { crop, expenses };
+}
+
+function individualCropRows(data) {
+  const { crop, expenses } = data;
+  const totalExpenses = expenses.reduce((sum, r) => sum + Number(r.totalCost || r.amount || 0), 0);
+  return [
+    { Section: "Crop", Field: "Name", Value: crop.name },
+    { Section: "Crop", Field: "Plot/location", Value: `${crop.field || ""} ${crop.plot || ""}`.trim() },
+    { Section: "Crop", Field: "Planting date", Value: crop.plantingDate },
+    { Section: "Crop", Field: "Expected harvest", Value: crop.harvestDate },
+    { Section: "Crop", Field: "Status", Value: crop.status },
+    { Section: "Crop", Field: "Expected yield", Value: crop.expectedYield },
+    { Section: "Crop", Field: "Actual yield", Value: crop.actualYield },
+    { Section: "Crop", Field: "Total expenses", Value: totalExpenses },
+    { Section: "Crop", Field: "Revenue", Value: crop.revenue },
+    { Section: "Crop", Field: "Profit/loss estimate", Value: Number(crop.revenue || 0) - totalExpenses },
+    ...expenses.map((r) => ({ Section: "Expense", Date: r.transactionDate, Category: r.category, Item: r.item, Description: r.description, Quantity: r.quantity, Unit: r.unit, UnitCost: r.unitCost, TotalCost: r.totalCost || r.amount, PaymentMethod: r.paymentMethod, SupplierVendor: r.supplierVendor, Notes: r.notes || r.remarks }))
+  ];
+}
+
+export async function sendIndividualCrop(res, user, cropId, format = "pdf") {
+  const data = await getIndividualCropData(user, cropId);
+  if (!data) return res.status(404).json({ message: "Crop not found" });
+  const name = `crop_${data.crop.name}_${data.crop.plot || data.crop.field || "report"}`.replace(/[^a-z0-9_-]+/gi, "_").toLowerCase();
+  const rows = individualCropRows(data);
+  if (format === "csv") return sendCsv(res, name, rows);
+  if (format === "xlsx") return sendExcel(res, name, rows);
+  if (format !== "pdf") return res.status(400).json({ message: "Unsupported export format" });
+  return sendIndividualCropPdf(res, data);
+}
+
+async function sendIndividualCropPdf(res, data) {
+  const { crop, expenses } = data;
+  const totalExpenses = expenses.reduce((sum, r) => sum + Number(r.totalCost || r.amount || 0), 0);
+  const byCategory = expenses.reduce((out, r) => {
+    out[r.category || "Other"] = (out[r.category || "Other"] || 0) + Number(r.totalCost || r.amount || 0);
+    return out;
+  }, {});
 
   const doc = new PDFDocument({ margin: 42, size: "A4" });
   res.setHeader("Content-Type", "application/pdf");
@@ -281,9 +476,10 @@ export async function sendIndividualCropPdf(res, user, cropId) {
   bullet(doc, "Harvest date", fmt(crop.harvestDate));
   bullet(doc, "Expected yield", crop.expectedYield);
   bullet(doc, "Actual yield", crop.actualYield);
-  bullet(doc, "Cost", crop.cost);
+  bullet(doc, "Old cost field", crop.cost);
+  bullet(doc, "Linked expenses", totalExpenses);
   bullet(doc, "Revenue", crop.revenue);
-  bullet(doc, "Profit/Loss", (crop.revenue || 0) - (crop.cost || 0));
+  bullet(doc, "Profit/Loss", (crop.revenue || 0) - totalExpenses);
   bullet(doc, "Status", crop.status);
   bullet(doc, "Notes", crop.notes);
 
@@ -293,10 +489,62 @@ export async function sendIndividualCropPdf(res, user, cropId) {
   });
 
   barChart(doc, "Financial Chart", {
-    Cost: crop.cost || 0,
+    Expenses: totalExpenses,
     Revenue: crop.revenue || 0,
-    "Profit/Loss": (crop.revenue || 0) - (crop.cost || 0)
+    "Profit/Loss": (crop.revenue || 0) - totalExpenses
   });
 
+  barChart(doc, "Expenses by Category", byCategory);
+
+  section(doc, "Crop Expenses");
+  expenses.length ? expenses.forEach((r) => bullet(doc, fmt(r.transactionDate), `${r.category} - ${r.item || r.description || ""} - ${r.totalCost || r.amount}`)) : bullet(doc, "Expenses", "None");
+
   doc.end();
+}
+
+const backupModels = {
+  animals: Animal,
+  crops: Crop,
+  healthRecords: HealthRecord,
+  vaccinations: VaccinationRecord,
+  breeding: BreedingRecord,
+  births: BirthRecord,
+  finance: Transaction,
+  documents: Document,
+  weather: WeatherRecord
+};
+
+function cleanBackupRecord(record, user) {
+  const out = { ...record };
+  delete out._id;
+  delete out.__v;
+  out.user = user;
+  return out;
+}
+
+export async function getBackup(user) {
+  const entries = await Promise.all(Object.entries(backupModels).map(async ([key, Model]) => [key, await Model.find({ user }).lean()]));
+  return {
+    exportedAt: new Date().toISOString(),
+    app: "Smart Farm AI",
+    version: 1,
+    data: Object.fromEntries(entries)
+  };
+}
+
+export async function importBackupData(user, backup) {
+  const data = backup?.data || backup;
+  if (!data || typeof data !== "object") throw new Error("Invalid backup file");
+  const result = {};
+  for (const [key, Model] of Object.entries(backupModels)) {
+    const rows = Array.isArray(data[key]) ? data[key] : [];
+    if (!rows.length) {
+      result[key] = 0;
+      continue;
+    }
+    const cleaned = rows.map((row) => cleanBackupRecord(row, user));
+    const inserted = await Model.insertMany(cleaned, { ordered: false });
+    result[key] = inserted.length;
+  }
+  return { message: "Backup imported as new records", imported: result };
 }

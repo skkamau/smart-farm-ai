@@ -4,9 +4,10 @@ import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
 import DocumentManager from "../components/DocumentManager";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
-import { formatDate, inputDate } from "../utils";
+import { currency, formatDate, inputDate } from "../utils";
 
 const emptyRecord = {
   animal: "",
@@ -18,9 +19,19 @@ const emptyRecord = {
   medication: "",
   dosage: "",
   vetName: "",
+  serviceType: "Vet consultation",
+  serviceCharge: "",
+  medicineCost: "",
+  transportCost: "",
+  otherCost: "",
+  paymentMethod: "Mpesa",
+  followUpDate: "",
   recoveryStatus: "Open",
   notes: ""
 };
+
+const serviceTypes = ["Vet consultation", "Vaccination", "Deworming", "Treatment", "Surgery", "Medicine", "Lab test", "Emergency visit", "Pregnancy check", "Artificial insemination", "Other"];
+const paymentMethods = ["Mpesa", "Bank Transfer", "Cash", "Other"];
 
 export default function HealthRecords() {
   const [records, setRecords] = useState([]);
@@ -53,7 +64,7 @@ export default function HealthRecords() {
 
   return (
     <div>
-      <PageHeader title="Health & Vet Records" eyebrow="Animal care" action={<button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add record</button>} />
+      <PageHeader title="Health & Vet Records" eyebrow="Animal care" action={<div className="flex flex-wrap gap-2"><ExportButtons type="health" basename="health_vet_records" /><button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add record</button></div>} />
       <div className="mb-4 max-w-lg">
         <input className="input" placeholder="Search by animal, condition, vet, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>
@@ -67,11 +78,12 @@ export default function HealthRecords() {
           { key: "treatment", label: "Treatment" },
           { key: "medication", label: "Medication" },
           { key: "vetName", label: "Vet", render: (row) => row.vetName || "Not set" },
+          { key: "totalCost", label: "Cost", render: (row) => currency.format(row.totalCost || 0) },
           { key: "recoveryStatus", label: "Status", render: (row) => <Status value={row.recoveryStatus} /> }
         ]}
         actions={(row) => (
           <div className="flex justify-end gap-2">
-            <button className="btn-muted px-2" onClick={() => setEditing({ ...row, animal: row.animal?._id, recordDate: inputDate(row.recordDate) })} aria-label="Edit health record"><Edit className="h-4 w-4" /></button>
+            <button className="btn-muted px-2" onClick={() => setEditing({ ...row, animal: row.animal?._id, recordDate: inputDate(row.recordDate), followUpDate: inputDate(row.followUpDate) })} aria-label="Edit health record"><Edit className="h-4 w-4" /></button>
             <button className="btn-muted px-2 text-red-700" onClick={() => remove(row._id)} aria-label="Delete health record"><Trash2 className="h-4 w-4" /></button>
           </div>
         )}
@@ -84,10 +96,11 @@ export default function HealthRecords() {
 function HealthModal({ record, animals, onClose, onSaved }) {
   const [form, setForm] = useState(record);
   const isEdit = Boolean(record._id);
+  const totalCost = Number(form.serviceCharge || 0) + Number(form.medicineCost || 0) + Number(form.transportCost || 0) + Number(form.otherCost || 0);
 
   async function submit(event) {
     event.preventDefault();
-    const payload = { ...form, animal: form.animal || animals[0]?._id };
+    const payload = { ...form, animal: form.animal || animals[0]?._id, totalCost };
     if (!payload.animal) return toast.error("Add an animal before creating health records");
     if (isEdit) await api.put(`/health-records/${record._id}`, payload);
     else await api.post("/health-records", payload);
@@ -101,6 +114,12 @@ function HealthModal({ record, animals, onClose, onSaved }) {
         <AnimalSelect animals={animals} value={form.animal} onChange={(value) => setForm({ ...form, animal: value })} />
         <Field label="Date" type="date" value={form.recordDate} onChange={(value) => setForm({ ...form, recordDate: value })} />
         <Field label="Condition / disease" value={form.condition} onChange={(value) => setForm({ ...form, condition: value })} required />
+        <label className="space-y-1">
+          <span className="label">Health issue / service type</span>
+          <select className="input" value={form.serviceType || "Vet consultation"} onChange={(event) => setForm({ ...form, serviceType: event.target.value })}>
+            {serviceTypes.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
         <Field label="Vet name" value={form.vetName || ""} onChange={(value) => setForm({ ...form, vetName: value })} />
         <TextArea label="Symptoms" value={form.symptoms || ""} onChange={(value) => setForm({ ...form, symptoms: value })} />
         <TextArea label="Diagnosis" value={form.diagnosis || ""} onChange={(value) => setForm({ ...form, diagnosis: value })} />
@@ -109,12 +128,26 @@ function HealthModal({ record, animals, onClose, onSaved }) {
           <Field label="Medication" value={form.medication || ""} onChange={(value) => setForm({ ...form, medication: value })} />
           <Field label="Dosage" value={form.dosage || ""} onChange={(value) => setForm({ ...form, dosage: value })} />
         </div>
+        <Field label="Service charge" type="number" value={form.serviceCharge || ""} onChange={(value) => setForm({ ...form, serviceCharge: value })} />
+        <Field label="Medicine cost" type="number" value={form.medicineCost || ""} onChange={(value) => setForm({ ...form, medicineCost: value })} />
+        <Field label="Transport cost" type="number" value={form.transportCost || ""} onChange={(value) => setForm({ ...form, transportCost: value })} />
+        <Field label="Other cost" type="number" value={form.otherCost || ""} onChange={(value) => setForm({ ...form, otherCost: value })} />
+        <label className="space-y-1">
+          <span className="label">Payment method</span>
+          <select className="input" value={form.paymentMethod || "Mpesa"} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })}>
+            {paymentMethods.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
+        <Field label="Follow-up date" type="date" value={form.followUpDate || ""} onChange={(value) => setForm({ ...form, followUpDate: value })} />
         <label className="space-y-1">
           <span className="label">Recovery status</span>
           <select className="input" value={form.recoveryStatus} onChange={(event) => setForm({ ...form, recoveryStatus: event.target.value })}>
             {["Open", "Recovering", "Recovered", "Chronic", "Referred"].map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
+        <div className="rounded-lg bg-field-cream p-3 text-sm font-semibold text-slate-600 sm:col-span-2">
+          Service + Medicine + Transport + Other = {currency.format(totalCost)}
+        </div>
         <TextArea label="Notes" value={form.notes || ""} onChange={(value) => setForm({ ...form, notes: value })} />
         {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="health" entityId={record._id} /></div>}
         <div className="flex justify-end gap-2 sm:col-span-2">

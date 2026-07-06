@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { formatDate, inputDate } from "../utils";
@@ -52,6 +53,7 @@ export default function Weather() {
         eyebrow="Daily farm conditions"
         action={
           <div className="flex flex-wrap gap-2">
+            <ExportButtons type="weather" basename="weather_logs" />
             <button className="btn-muted" onClick={importCurrentWeather} disabled={importing}>
               <DownloadCloud className="h-4 w-4" />
               {importing ? "Importing..." : "Import from internet"}

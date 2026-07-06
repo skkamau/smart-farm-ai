@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { formatDate, inputDate } from "../utils";
@@ -34,7 +35,7 @@ export default function BreedingRecords() {
 
   return (
     <div>
-      <PageHeader title="Breeding Management" eyebrow="Mating and pregnancy" action={<button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add breeding</button>} />
+      <PageHeader title="Breeding Management" eyebrow="Mating and pregnancy" action={<div className="flex flex-wrap gap-2"><ExportButtons type="breeding" basename="breeding_records" /><button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add breeding</button></div>} />
       <DataTable
         rows={records}
         emptyText="No breeding records yet."

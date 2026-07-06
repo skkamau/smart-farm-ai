@@ -4,9 +4,10 @@ import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
 import DocumentManager from "../components/DocumentManager";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
-import { formatDate, inputDate } from "../utils";
+import { currency, formatDate, inputDate } from "../utils";
 
 const emptyRecord = {
   animal: "",
@@ -15,9 +16,16 @@ const emptyRecord = {
   nextDueDate: "",
   vetName: "",
   batchNumber: "",
+  serviceCharge: "",
+  vaccineCost: "",
+  transportCost: "",
+  otherCost: "",
+  paymentMethod: "Mpesa",
   status: "completed",
   notes: ""
 };
+
+const paymentMethods = ["Mpesa", "Bank Transfer", "Cash", "Other"];
 
 const sheepGoatSchedule = [
   {
@@ -122,7 +130,7 @@ export default function Vaccinations() {
 
   return (
     <div>
-      <PageHeader title="Vaccinations" eyebrow="Immunization schedule" action={<button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add vaccine</button>} />
+      <PageHeader title="Vaccinations" eyebrow="Immunization schedule" action={<div className="flex flex-wrap gap-2"><ExportButtons type="vaccinations" basename="vaccinations" /><button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add vaccine</button></div>} />
       <section className="card mb-5 p-5">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3">
@@ -162,6 +170,7 @@ export default function Vaccinations() {
           { key: "nextDueDate", label: "Next due", render: (row) => formatDate(row.nextDueDate) },
           { key: "vetName", label: "Vet", render: (row) => row.vetName || "Not set" },
           { key: "batchNumber", label: "Batch", render: (row) => row.batchNumber || "Not set" },
+          { key: "totalCost", label: "Cost", render: (row) => currency.format(row.totalCost || 0) },
           { key: "status", label: "Status", render: (row) => <VaccineStatus value={row.status} /> }
         ]}
         actions={(row) => (
@@ -209,10 +218,11 @@ function ScheduleCard({ item, onUse }) {
 function VaccineModal({ record, animals, onClose, onSaved }) {
   const [form, setForm] = useState(record);
   const isEdit = Boolean(record._id);
+  const totalCost = Number(form.serviceCharge || 0) + Number(form.vaccineCost || 0) + Number(form.transportCost || 0) + Number(form.otherCost || 0);
 
   async function submit(event) {
     event.preventDefault();
-    const payload = { ...form, animal: form.animal || animals[0]?._id };
+    const payload = { ...form, animal: form.animal || animals[0]?._id, totalCost };
     if (!payload.animal) return toast.error("Add an animal before creating vaccinations");
     if (isEdit) await api.put(`/vaccinations/${record._id}`, payload);
     else await api.post("/vaccinations", payload);
@@ -229,12 +239,25 @@ function VaccineModal({ record, animals, onClose, onSaved }) {
         <Field label="Next due date" type="date" value={form.nextDueDate} onChange={(value) => setForm({ ...form, nextDueDate: value })} />
         <Field label="Vet name" value={form.vetName || ""} onChange={(value) => setForm({ ...form, vetName: value })} />
         <Field label="Batch number" value={form.batchNumber || ""} onChange={(value) => setForm({ ...form, batchNumber: value })} />
+        <Field label="Service charge" type="number" value={form.serviceCharge || ""} onChange={(value) => setForm({ ...form, serviceCharge: value })} />
+        <Field label="Vaccine cost" type="number" value={form.vaccineCost || ""} onChange={(value) => setForm({ ...form, vaccineCost: value })} />
+        <Field label="Transport cost" type="number" value={form.transportCost || ""} onChange={(value) => setForm({ ...form, transportCost: value })} />
+        <Field label="Other cost" type="number" value={form.otherCost || ""} onChange={(value) => setForm({ ...form, otherCost: value })} />
+        <label className="space-y-1">
+          <span className="label">Payment method</span>
+          <select className="input" value={form.paymentMethod || "Mpesa"} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })}>
+            {paymentMethods.map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
         <label className="space-y-1">
           <span className="label">Status</span>
           <select className="input" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
             {["completed", "upcoming", "overdue"].map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
+        <div className="rounded-lg bg-field-cream p-3 text-sm font-semibold text-slate-600 sm:col-span-2">
+          Service + Vaccine + Transport + Other = {currency.format(totalCost)}
+        </div>
         <label className="space-y-1 sm:col-span-2">
           <span className="label">Notes</span>
           <textarea className="input min-h-20" value={form.notes || ""} onChange={(event) => setForm({ ...form, notes: event.target.value })} />

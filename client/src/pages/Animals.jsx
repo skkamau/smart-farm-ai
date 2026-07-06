@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
+import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
@@ -36,7 +37,7 @@ export default function Animals() {
 
   return (
     <div>
-      <PageHeader title="Animals" eyebrow="Livestock records" action={<button className="btn-primary" onClick={() => setEditing(emptyAnimal)}><Plus className="h-4 w-4" /> Add animal</button>} />
+      <PageHeader title="Animals" eyebrow="Livestock records" action={<div className="flex flex-wrap gap-2"><ExportButtons type="animals" basename="animals" /><button className="btn-primary" onClick={() => setEditing(emptyAnimal)}><Plus className="h-4 w-4" /> Add animal</button></div>} />
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <AnimalToolCard to="/animals" label="All Animals" icon={Beef} />
         <AnimalToolCard to="/vaccinations" label="Vaccines" icon={ShieldPlus} />
