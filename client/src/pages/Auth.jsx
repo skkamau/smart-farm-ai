@@ -71,10 +71,6 @@ export default function Auth({ mode }) {
               {loading ? "Working..." : isSignup ? "Create account" : "Login"}
             </button>
 
-            <div className="rounded-lg bg-field-mist p-3 text-xs font-semibold leading-5 text-slate-600">
-              Seed login after running <span className="font-semibold">npm run seed</span>: admin@smartfarm.local / password123
-            </div>
-
             <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px] font-bold text-farm-800">
               <AuthPill icon={Beef} label="Animals" />
               <AuthPill icon={Sprout} label="Crops" />
