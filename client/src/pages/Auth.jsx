@@ -76,6 +76,7 @@ export default function Auth({ mode }) {
               <AuthPill icon={Sprout} label="Crops" />
               <AuthPill icon={WalletCards} label="Finance" />
             </div>
+            <div className="sr-only">Smart Farm AI public auth page v2</div>
           </form>
         </section>
       </div>
