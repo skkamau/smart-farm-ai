@@ -28,8 +28,14 @@ mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/smart-farm-ai?retryWrites=tr
 ```text
 MONGODB_URI=your MongoDB Atlas connection string
 CLIENT_URL=your Vercel frontend URL, for example https://smart-farm-ai.vercel.app
+APP_URL=your Vercel frontend URL, used for password reset links
 JWT_SECRET=Render can generate this from render.yaml
 JWT_EXPIRES_IN=7d
+SMTP_HOST=your SMTP host for password reset emails
+SMTP_PORT=587
+SMTP_USER=your SMTP username
+SMTP_PASS=your SMTP password or app password
+SMTP_FROM=Smart Farm AI <no-reply@your-domain.com>
 NODE_ENV=production
 ```
 
@@ -74,6 +80,7 @@ After Vercel gives you the final frontend URL, go back to Render and set:
 
 ```text
 CLIENT_URL=https://YOUR-VERCEL-APP.vercel.app
+APP_URL=https://YOUR-VERCEL-APP.vercel.app
 ```
 
 Redeploy the backend.

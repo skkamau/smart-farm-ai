@@ -6,7 +6,12 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, minlength: 6 },
-    farmName: { type: String, default: "Smart Farm", trim: true }
+    farmName: { type: String, default: "Smart Farm", trim: true },
+    passwordResetTokenHash: { type: String, select: false },
+    passwordResetExpiresAt: { type: Date, select: false },
+    passwordResetRequestedAt: { type: Date, select: false },
+    passwordChangedAt: { type: Date },
+    sessionVersion: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

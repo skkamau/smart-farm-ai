@@ -10,9 +10,11 @@ import BreedingRecords from "./pages/BreedingRecords";
 import Crops from "./pages/Crops";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
+import ForgotPassword from "./pages/ForgotPassword";
 import HealthRecords from "./pages/HealthRecords";
 import More from "./pages/More";
 import Reports from "./pages/Reports";
+import ResetPassword from "./pages/ResetPassword";
 import Scanner from "./pages/Scanner";
 import SmartAssistant from "./pages/SmartAssistant";
 import Vaccinations from "./pages/Vaccinations";
@@ -23,6 +25,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Auth mode="login" />} />
       <Route path="/signup" element={<Auth mode="signup" />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route
         path="/"
         element={

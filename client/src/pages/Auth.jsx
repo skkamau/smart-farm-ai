@@ -66,6 +66,13 @@ export default function Auth({ mode }) {
             )}
             <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
             <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} required />
+            {!isSignup && (
+              <div className="text-right">
+                <Link className="text-sm font-black text-farm-800 hover:text-farm-950" to="/forgot-password">
+                  Forgot Password?
+                </Link>
+              </div>
+            )}
 
             <button className="btn-primary w-full" disabled={loading}>
               {loading ? "Working..." : isSignup ? "Create account" : "Login"}

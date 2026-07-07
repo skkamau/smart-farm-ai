@@ -17,6 +17,11 @@ export async function protect(req, res, next) {
       return res.status(401).json({ message: "User no longer exists" });
     }
 
+    const tokenSessionVersion = Number(decoded.sessionVersion ?? 0);
+    if (tokenSessionVersion !== Number(user.sessionVersion || 0)) {
+      return res.status(401).json({ message: "Session expired. Please log in again." });
+    }
+
     req.user = user;
     next();
   } catch (error) {

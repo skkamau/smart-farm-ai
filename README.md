@@ -141,6 +141,19 @@ Set `CLIENT_URL` in `server/.env` to the frontend URL that users should open aft
 CLIENT_URL=http://localhost:5173
 ```
 
+Password reset emails also need the frontend URL and SMTP settings in `server/.env` or Render:
+
+```bash
+APP_URL=http://localhost:5173
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+SMTP_FROM="Smart Farm AI <no-reply@example.com>"
+```
+
+If SMTP is not configured, reset links are logged only in development for testing and are not exposed to users.
+
 If Vite starts on another port because `5173` is busy, update `CLIENT_URL`, restart the API, and edit or reload animal records so QR links use the desired frontend URL.
 
 ### Use QR Features
