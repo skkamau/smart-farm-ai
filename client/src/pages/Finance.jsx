@@ -15,6 +15,7 @@ const tabs = [
   { id: "CropExpense", label: "Crop Expenses" },
   { id: "AnimalHealth", label: "Animal Health" },
   { id: "Construction", label: "Construction" },
+  { id: "Inventory", label: "Inventory" },
   { id: "Equipment", label: "Equipment" },
   { id: "Feed", label: "Feed" },
   { id: "Fuel", label: "Fuel" },
@@ -23,7 +24,20 @@ const tabs = [
   { id: "Reports", label: "Reports" }
 ];
 
+const financeGroups = [
+  { title: "Dashboard", description: "Cash flow, profit and farm health", tabs: ["Overview"] },
+  { title: "Income", description: "Sales, income and cash records", tabs: ["Income", "CashSavings"] },
+  { title: "Expenses", description: "General, crop and animal costs", tabs: ["Expenses", "CropExpense", "AnimalHealth"] },
+  { title: "Inventory", description: "Current stock and non-current tools", tabs: ["Inventory", "Equipment", "Feed", "Fuel", "Consumables"] },
+  { title: "Budget", description: "Construction, stock and asset costs", tabs: ["Construction", "Equipment", "Feed", "Fuel", "Consumables"] },
+  { title: "Reports", description: "Monthly and category summaries", tabs: ["Reports"] },
+  { title: "Analytics", description: "Category trends and income patterns", tabs: ["Overview", "Reports"] },
+  { title: "Downloads", description: "PDF, CSV and Excel exports", tabs: [] },
+  { title: "Settings", description: "Finance setup and record structure", tabs: [] }
+];
+
 const stockSections = ["Feed", "Fuel", "Consumables"];
+const inventorySections = ["Equipment", "Feed", "Fuel", "Consumables"];
 const paymentMethods = ["Mpesa", "Bank Transfer", "Cash", "Other"];
 
 const sectionItems = {
@@ -91,7 +105,11 @@ export default function Finance() {
 
   const summary = useMemo(() => buildSummary(records), [records]);
   const filteredRecords = useMemo(() => {
-    let sectionRecords = activeTab === "Overview" || activeTab === "Reports" ? records : records.filter((record) => sectionOf(record) === activeTab);
+    let sectionRecords = activeTab === "Overview" || activeTab === "Reports"
+      ? records
+      : activeTab === "Inventory"
+        ? records.filter((record) => inventorySections.includes(sectionOf(record)))
+        : records.filter((record) => sectionOf(record) === activeTab);
     if (filters.crop) sectionRecords = sectionRecords.filter((record) => entityId(record.crop) === filters.crop);
     if (filters.animal) sectionRecords = sectionRecords.filter((record) => entityId(record.animal) === filters.animal);
     if (filters.category) sectionRecords = sectionRecords.filter((record) => record.category === filters.category);
@@ -111,36 +129,121 @@ export default function Finance() {
   }
 
   function startAdd(section = activeTab) {
-    const financeSection = section === "Overview" || section === "Reports" ? "Expenses" : section;
+    const financeSection = section === "Overview" || section === "Reports" ? "Expenses" : section === "Inventory" ? "Feed" : section;
     setEditing({ ...emptyRecord, financeSection, category: defaultCategory(financeSection), item: sectionItems[financeSection]?.[0] || "" });
   }
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader title="Finance" eyebrow="Subukia goat shed records" action={<button className="btn-primary" onClick={() => startAdd()}><Plus className="h-4 w-4" /> Add record</button>} />
 
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-2">
-        {tabs.map((tab) => (
-          <button key={tab.id} className={activeTab === tab.id ? "btn-primary whitespace-nowrap" : "btn-muted whitespace-nowrap"} onClick={() => setActiveTab(tab.id)}>
-            {tab.label}
-          </button>
-        ))}
+      <FinanceHero summary={summary} records={records} />
+      <FinanceNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+        <main className="min-w-0 space-y-5">
+          <FinanceFilters records={records} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} />
+
+          {activeTab === "Overview" && <Overview summary={summary} records={records} onAdd={startAdd} />}
+          {activeTab === "Inventory" && <Inventory records={filteredRecords} summary={summary} onAdd={startAdd} onEdit={setEditing} onDelete={remove} />}
+          {activeTab === "Reports" && <Reports summary={summary} records={records} />}
+          {!["Overview", "Inventory", "Reports"].includes(activeTab) && (
+            <>
+              <SectionSummary section={activeTab} records={filteredRecords} onAdd={() => startAdd(activeTab)} />
+              <FinanceList records={filteredRecords} section={activeTab} onEdit={setEditing} onDelete={remove} />
+            </>
+          )}
+        </main>
+
+        <aside className="space-y-5">
+          <FinanceExportBar activeTab={activeTab} filters={filters} />
+          <QuickAddPanel onAdd={startAdd} />
+          <FinanceSettingsPanel activeTab={activeTab} />
+        </aside>
       </div>
-
-      <FinanceFilters records={records} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} />
-      <FinanceExportBar activeTab={activeTab} filters={filters} />
-
-      {activeTab === "Overview" && <Overview summary={summary} records={records} onAdd={startAdd} />}
-      {activeTab === "Reports" && <Reports summary={summary} records={records} />}
-      {!["Overview", "Reports"].includes(activeTab) && (
-        <>
-          <SectionSummary section={activeTab} records={filteredRecords} onAdd={() => startAdd(activeTab)} />
-          <FinanceList records={filteredRecords} section={activeTab} onEdit={setEditing} onDelete={remove} />
-        </>
-      )}
 
       {editing && <FinanceModal record={editing} crops={crops} animals={animals} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
     </div>
+  );
+}
+
+function FinanceHero({ summary, records }) {
+  const net = summary.totalIncome - summary.totalExpenses;
+  const monthlyCashFlow = summary.monthlyIncome - summary.monthlyExpenses;
+  const health = net >= 0 ? "Healthy" : "Needs attention";
+  return (
+    <section className="overflow-hidden rounded-2xl border border-farm-100 bg-white shadow-soft">
+      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="bg-farm-900 p-5 text-white sm:p-6">
+          <div className="text-xs font-black uppercase tracking-widest text-field-sage">Finance dashboard</div>
+          <h2 className="mt-3 text-2xl font-black sm:text-3xl">Farm money, costs and records in one clean workspace</h2>
+          <p className="mt-3 max-w-2xl text-sm text-field-cream">Track income, expenses, stock, animal health costs, crop costs, exports and reports without leaving the Finance module.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <HeroMetric label="Net profit/loss" value={currency.format(net)} tone={net >= 0 ? "good" : "warn"} />
+            <HeroMetric label="Monthly cash flow" value={currency.format(monthlyCashFlow)} tone={monthlyCashFlow >= 0 ? "good" : "warn"} />
+            <HeroMetric label="Records saved" value={records.length.toLocaleString()} />
+          </div>
+        </div>
+        <div className="grid gap-3 bg-field-cream/70 p-5 sm:grid-cols-2 sm:p-6">
+          <MiniStat label="Total income" value={currency.format(summary.totalIncome)} />
+          <MiniStat label="Total expenses" value={currency.format(summary.totalExpenses)} />
+          <MiniStat label="Cash available" value={currency.format(summary.cash)} />
+          <MiniStat label="Financial health" value={health} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HeroMetric({ label, value, tone }) {
+  const toneClass = tone === "warn" ? "text-amber-200" : tone === "good" ? "text-field-sage" : "text-white";
+  return (
+    <div className="rounded-xl border border-white/15 bg-white/10 p-3">
+      <div className="text-[11px] font-black uppercase tracking-wide text-white/60">{label}</div>
+      <div className={`mt-2 text-lg font-black ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function FinanceNavigation({ activeTab, setActiveTab }) {
+  return (
+    <section className="card p-4">
+      <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+          <div className="label">Finance workspace</div>
+          <h2 className="mt-1 text-lg font-black text-farm-950">Organized by daily farm work</h2>
+        </div>
+        <div className="text-sm font-semibold text-slate-500">{labelFor(activeTab)} selected</div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {financeGroups.map((group) => (
+          <div key={group.title} className="rounded-xl border border-farm-100 bg-field-cream/50 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-black text-farm-950">{group.title}</div>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{group.description}</p>
+              </div>
+            </div>
+            {group.tabs.length ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {group.tabs.map((tabId) => {
+                  const tab = tabs.find((item) => item.id === tabId);
+                  return (
+                    <button key={tabId} className={activeTab === tabId ? "btn-primary px-3 py-2 text-xs" : "btn-muted px-3 py-2 text-xs"} onClick={() => setActiveTab(tabId)}>
+                      {tab?.label || labelFor(tabId)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 rounded-lg bg-white p-3 text-xs font-semibold leading-5 text-slate-500">
+                Available in the right panel for the selected records.
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -150,9 +253,11 @@ function FinanceExportBar({ activeTab, filters }) {
   Object.keys(params).forEach((key) => !params[key] && delete params[key]);
   const base = `finance_${type}_${todayStamp()}`;
   return (
-    <section className="card mb-5 p-4">
-      <div className="mb-3 font-black text-farm-950">Download filtered finance records</div>
-      <div className="flex flex-wrap gap-2">
+    <section className="card p-4">
+      <div className="label">Downloads</div>
+      <div className="mt-1 font-black text-farm-950">Export current finance view</div>
+      <p className="mt-2 text-sm font-semibold text-slate-500">Downloads respect the active section and filters.</p>
+      <div className="mt-4 grid gap-2">
         <button className="btn-primary" onClick={() => downloadReport(type, "pdf", `${base}.pdf`, params)}><Download className="h-4 w-4" /> PDF</button>
         <button className="btn-muted" onClick={() => downloadReport(type, "csv", `${base}.csv`, params)}><FileText className="h-4 w-4" /> CSV</button>
         <button className="btn-muted" onClick={() => downloadReport(type, "xlsx", `${base}.xlsx`, params)}><FileSpreadsheet className="h-4 w-4" /> Excel</button>
@@ -169,6 +274,7 @@ function financeExportType(tab) {
     Expenses: "finance",
     CropExpense: "crop-expenses",
     AnimalHealth: "animal-health",
+    Inventory: "finance",
     Construction: "construction",
     Equipment: "equipment",
     Feed: "feed",
@@ -180,27 +286,17 @@ function financeExportType(tab) {
 }
 
 function Overview({ summary, records, onAdd }) {
+  const categoryRows = Object.entries(summary.byCategory).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const incomeRows = Object.entries(summary.byIncomeSource).sort((a, b) => b[1] - a[1]).slice(0, 5);
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total farm income" value={currency.format(summary.totalIncome)} />
         <StatCard label="Total farm expenses" value={currency.format(summary.totalExpenses)} tone="amber" />
         <StatCard label="Profit / loss" value={currency.format(summary.totalIncome - summary.totalExpenses)} tone={summary.totalIncome >= summary.totalExpenses ? "slate" : "amber"} />
-        <StatCard label="Crop expenses" value={currency.format(summary.cropExpenses)} tone="amber" />
-        <StatCard label="Vet/health expenses" value={currency.format(summary.animalHealth)} tone="amber" />
-        <StatCard label="Highest cost crop" value={summary.highestCrop.label} detail={currency.format(summary.highestCrop.value)} tone="slate" />
-        <StatCard label="Highest cost animal" value={summary.highestAnimal.label} detail={currency.format(summary.highestAnimal.value)} tone="slate" />
-        <StatCard label="Monthly crop costs" value={currency.format(summary.monthlyCrop)} />
-        <StatCard label="Monthly vet costs" value={currency.format(summary.monthlyHealth)} />
-        <StatCard label="Construction costs" value={currency.format(summary.construction)} />
-        <StatCard label="Feed costs" value={currency.format(summary.feed)} tone="slate" />
-        <StatCard label="Fuel costs" value={currency.format(summary.fuel)} tone="amber" />
-        <StatCard label="Equipment value" value={currency.format(summary.equipment)} />
-        <StatCard label="Consumables stock" value={summary.consumablesBalance.toLocaleString()} detail="current balance" tone="slate" />
-        <StatCard label="Cash available" value={currency.format(summary.cash)} />
-        <StatCard label="Savings" value={currency.format(summary.savings)} tone="slate" />
+        <StatCard label="Monthly cash flow" value={currency.format(summary.monthlyIncome - summary.monthlyExpenses)} tone={summary.monthlyIncome >= summary.monthlyExpenses ? "slate" : "amber"} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.8fr]">
+      <div className="mt-5 grid gap-5 xl:grid-cols-3">
         <section className="card p-5">
           <h2 className="mb-4 font-black text-farm-950">Recent finance activity</h2>
           <div className="space-y-3">
@@ -209,18 +305,192 @@ function Overview({ summary, records, onAdd }) {
           </div>
         </section>
         <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Quick add</h2>
-          <div className="grid gap-2">
-            {tabs.filter((tab) => !["Overview", "Reports"].includes(tab.id)).map((tab) => (
-              <button key={tab.id} className="btn-muted justify-between" onClick={() => onAdd(tab.id)}>
-                {tab.label}
-                <Plus className="h-4 w-4" />
-              </button>
-            ))}
+          <h2 className="mb-4 font-black text-farm-950">Top expense categories</h2>
+          <div className="space-y-2">
+            {categoryRows.map(([label, value]) => <ProgressRow key={label} label={label} value={value} total={summary.totalExpenses || 1} />)}
+            {!categoryRows.length && <div className="text-sm text-slate-500">No expense categories yet.</div>}
+          </div>
+        </section>
+        <section className="card p-5">
+          <h2 className="mb-4 font-black text-farm-950">Income sources</h2>
+          <div className="space-y-2">
+            {incomeRows.map(([label, value]) => <ProgressRow key={label} label={label} value={value} total={summary.totalIncome || 1} />)}
+            {!incomeRows.length && <div className="text-sm text-slate-500">No income sources yet.</div>}
           </div>
         </section>
       </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Crop expenses" value={currency.format(summary.cropExpenses)} tone="amber" />
+        <StatCard label="Vet/health expenses" value={currency.format(summary.animalHealth)} tone="amber" />
+        <StatCard label="Highest cost crop" value={summary.highestCrop.label} detail={currency.format(summary.highestCrop.value)} tone="slate" />
+        <StatCard label="Highest cost animal" value={summary.highestAnimal.label} detail={currency.format(summary.highestAnimal.value)} tone="slate" />
+        <StatCard label="Construction costs" value={currency.format(summary.construction)} />
+        <StatCard label="Feed costs" value={currency.format(summary.feed)} tone="slate" />
+        <StatCard label="Fuel costs" value={currency.format(summary.fuel)} tone="amber" />
+        <StatCard label="Equipment value" value={currency.format(summary.equipment)} />
+        <StatCard label="Consumables stock" value={summary.consumablesBalance.toLocaleString()} detail="current balance" tone="slate" />
+        <StatCard label="Cash available" value={currency.format(summary.cash)} />
+        <StatCard label="Savings" value={currency.format(summary.savings)} tone="slate" />
+        <StatCard label="Monthly vet costs" value={currency.format(summary.monthlyHealth)} />
+      </div>
     </>
+  );
+}
+
+function ProgressRow({ label, value, total }) {
+  const width = Math.min(100, Math.round((Number(value || 0) / total) * 100));
+  return (
+    <div className="rounded-lg border border-farm-100 bg-white p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="min-w-0 truncate font-black text-farm-950">{label}</span>
+        <span className="font-black text-slate-700">{currency.format(value)}</span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-field-sage">
+        <div className="h-full rounded-full bg-farm-700" style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function QuickAddPanel({ onAdd }) {
+  return (
+    <section className="card p-4">
+      <div className="label">Actions</div>
+      <div className="mt-1 font-black text-farm-950">Quick add record</div>
+      <div className="mt-4 grid gap-2">
+        {tabs.filter((tab) => !["Overview", "Inventory", "Reports"].includes(tab.id)).map((tab) => (
+          <button key={tab.id} className="btn-muted justify-between" onClick={() => onAdd(tab.id)}>
+            {tab.label}
+            <Plus className="h-4 w-4" />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FinanceSettingsPanel({ activeTab }) {
+  return (
+    <section className="card p-4">
+      <div className="label">Settings</div>
+      <div className="mt-1 font-black text-farm-950">Current section setup</div>
+      <div className="mt-3 space-y-2 text-sm font-semibold text-slate-600">
+        <div className="rounded-lg bg-field-cream p-3">Section: {labelFor(activeTab)}</div>
+        <div className="rounded-lg bg-field-cream p-3">Payment methods: {paymentMethods.join(", ")}</div>
+        <div className="rounded-lg bg-field-cream p-3">Categories preserved from existing finance records.</div>
+      </div>
+    </section>
+  );
+}
+
+function Inventory({ records, summary, onAdd, onEdit, onDelete }) {
+  const currentRecords = records.filter((record) => stockSections.includes(sectionOf(record)));
+  const nonCurrentRecords = records.filter((record) => sectionOf(record) === "Equipment");
+  const currentItems = aggregateInventory(currentRecords);
+  const nonCurrentItems = aggregateInventory(nonCurrentRecords);
+  const currentValue = currentItems.reduce((sum, item) => sum + item.value, 0);
+  const lowStockCount = currentItems.filter((item) => item.balance <= 0).length;
+
+  return (
+    <div className="space-y-5">
+      <section className="card p-5">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+          <div>
+            <div className="label">Inventory</div>
+            <h2 className="mt-1 text-xl font-black text-farm-950">All farm inventory</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Current inventory covers feed, fuel and consumables. Non-current inventory covers tools and equipment.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primary" onClick={() => onAdd("Feed")}><Plus className="h-4 w-4" /> Add current stock</button>
+            <button className="btn-muted" onClick={() => onAdd("Equipment")}><Plus className="h-4 w-4" /> Add tool/equipment</button>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <MiniStat label="Current inventory value" value={currency.format(currentValue)} />
+          <MiniStat label="Consumables balance" value={summary.consumablesBalance.toLocaleString()} />
+          <MiniStat label="Tools & equipment value" value={currency.format(summary.equipment)} />
+          <MiniStat label="Items needing review" value={lowStockCount.toLocaleString()} />
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <InventoryPanel
+          title="Current inventory"
+          description="Feed, fuel and consumables used in daily farm operations."
+          empty="No current inventory yet."
+          items={currentItems}
+          records={currentRecords}
+          onAdd={() => onAdd("Feed")}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+        <InventoryPanel
+          title="Non-current inventory"
+          description="Tools, machines and equipment kept as farm assets."
+          empty="No tools or equipment yet."
+          items={nonCurrentItems}
+          records={nonCurrentRecords}
+          onAdd={() => onAdd("Equipment")}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      </div>
+    </div>
+  );
+}
+
+function InventoryPanel({ title, description, empty, items, records, onAdd, onEdit, onDelete }) {
+  return (
+    <section className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-black text-farm-950">{title}</h3>
+          <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">{description}</p>
+        </div>
+        <button className="btn-muted px-3 py-2 text-xs" onClick={onAdd}><Plus className="h-4 w-4" /> Add</button>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {items.map((item) => (
+          <div key={`${item.section}-${item.name}`} className="rounded-xl border border-farm-100 bg-field-cream/50 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate font-black text-farm-950">{item.name}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{labelFor(item.section)}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-black text-farm-950">{stockSections.includes(item.section) ? item.balance.toLocaleString() : item.quantity.toLocaleString()}</div>
+                <div className="text-xs font-semibold text-slate-500">{item.unit || "units"}</div>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+              <Info label="Value" value={currency.format(item.value)} />
+              <Info label="Qty in" value={item.quantityIn.toLocaleString()} />
+              <Info label="Qty out" value={item.quantityOut.toLocaleString()} />
+            </div>
+          </div>
+        ))}
+        {!items.length && <div className="rounded-xl border border-dashed border-farm-100 bg-white p-6 text-center text-sm font-semibold text-slate-500">{empty}</div>}
+      </div>
+
+      <div className="mt-5 border-t border-farm-100 pt-4">
+        <div className="mb-3 label">Recent inventory records</div>
+        <div className="space-y-3">
+          {records.slice(0, 5).map((record) => (
+            <article key={record._id} className="rounded-xl border border-farm-100 bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <FinanceRow record={record} />
+                <div className="flex gap-2">
+                  <button className="btn-muted px-2" onClick={() => onEdit(recordForEdit(record))} aria-label="Edit inventory record"><Edit className="h-4 w-4" /></button>
+                  <button className="btn-muted px-2 text-red-700" onClick={() => onDelete(record._id)} aria-label="Delete inventory record"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {!records.length && <div className="text-sm font-semibold text-slate-500">No recent inventory records.</div>}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -408,7 +678,7 @@ function FinanceModal({ record, crops, animals, onClose, onSaved }) {
         <label className="space-y-1">
           <span className="label">Section</span>
           <select className="input" value={section} onChange={(event) => setForm({ ...form, financeSection: event.target.value, item: sectionItems[event.target.value]?.[0] || "" })}>
-            {tabs.filter((tab) => !["Overview", "Reports"].includes(tab.id)).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+            {tabs.filter((tab) => !["Overview", "Inventory", "Reports"].includes(tab.id)).map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
           </select>
         </label>
         <Field label={isCash ? "Month" : "Item"} value={isCash ? form.month : form.item} onChange={(v) => setForm(isCash ? { ...form, month: v } : { ...form, item: v })} list={isCash ? undefined : `${section}-items`} required={!isCash} />
@@ -519,6 +789,34 @@ function computedBalance(record, section) {
   return "-";
 }
 
+function aggregateInventory(records) {
+  const grouped = {};
+  for (const record of records) {
+    const section = sectionOf(record);
+    const name = record.item || record.description || record.category || labelFor(section);
+    const key = `${section}:${name}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        section,
+        name,
+        unit: record.unit || "",
+        quantity: 0,
+        quantityIn: 0,
+        quantityOut: 0,
+        balance: 0,
+        value: 0
+      };
+    }
+    grouped[key].unit = grouped[key].unit || record.unit || "";
+    grouped[key].quantity += Number(record.quantity || 0);
+    grouped[key].quantityIn += Number(record.quantityIn || 0);
+    grouped[key].quantityOut += Number(record.quantityOut || 0);
+    grouped[key].balance += stockSections.includes(section) ? stockMovement(record) : Number(record.quantity || 0);
+    grouped[key].value += recordAmount(record);
+  }
+  return Object.values(grouped).sort((a, b) => a.section.localeCompare(b.section) || a.name.localeCompare(b.name));
+}
+
 function recordForEdit(record) {
   return {
     ...emptyRecord,
@@ -548,6 +846,8 @@ function buildSummary(records) {
   const summary = {
     totalExpenses: 0,
     totalIncome: 0,
+    monthlyExpenses: 0,
+    monthlyIncome: 0,
     cropExpenses: 0,
     animalHealth: 0,
     monthlyCrop: 0,
@@ -564,6 +864,7 @@ function buildSummary(records) {
     feedOut: 0,
     fuelOut: 0,
     byCategory: {},
+    byIncomeSource: {},
     byCrop: {},
     byAnimal: {}
   };
@@ -572,8 +873,16 @@ function buildSummary(records) {
     const section = sectionOf(record);
     const amount = recordAmount(record);
     const month = record.transactionDate ? new Date(record.transactionDate).toISOString().slice(0, 7) : "";
-    if (record.type === "expense") summary.totalExpenses += amount;
-    if (record.type === "income" && section !== "CashSavings") summary.totalIncome += amount;
+    if (record.type === "expense") {
+      summary.totalExpenses += amount;
+      if (month === currentMonth) summary.monthlyExpenses += amount;
+    }
+    if (record.type === "income" && section !== "CashSavings") {
+      summary.totalIncome += amount;
+      if (month === currentMonth) summary.monthlyIncome += amount;
+      const source = record.item || record.category || "Income";
+      summary.byIncomeSource[source] = (summary.byIncomeSource[source] || 0) + amount;
+    }
     if (section === "CropExpense") {
       summary.cropExpenses += amount;
       if (month === currentMonth) summary.monthlyCrop += amount;
