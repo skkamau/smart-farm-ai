@@ -28,6 +28,7 @@ const port = process.env.PORT || 5000;
 const host = process.env.HOST || "0.0.0.0";
 const allowedOrigins = new Set([
   process.env.CLIENT_URL || "http://localhost:5173",
+  "https://smart-farm-ai-two.vercel.app",
   "https://smart-farm-ai-skkamaus-projects.vercel.app",
   "https://smart-farm-ai-git-main-skkamaus-projects.vercel.app",
   "http://localhost:5173",
@@ -37,11 +38,12 @@ const allowedOrigins = new Set([
 ]);
 const localNetworkOrigin = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+):517\d$/;
 const vercelPreviewOrigin = /^https:\/\/smart-farm-[a-z0-9-]+-skkamaus-projects\.vercel\.app$/;
+const vercelSmartFarmOrigin = /^https:\/\/smart-farm-ai[-a-z0-9]*\.vercel\.app$/;
 
 app.use(helmet());
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin) || localNetworkOrigin.test(origin) || vercelPreviewOrigin.test(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.has(origin) || localNetworkOrigin.test(origin) || vercelPreviewOrigin.test(origin) || vercelSmartFarmOrigin.test(origin)) return callback(null, true);
     return callback(new Error(`CORS blocked origin: ${origin}`));
   }
 }));
