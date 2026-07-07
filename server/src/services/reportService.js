@@ -124,6 +124,7 @@ function transactionRows(rows) {
     TotalCost: r.totalCost || r.amount,
     PaymentMethod: r.paymentMethod,
     SupplierVendor: r.supplierVendor,
+    StorageLocation: r.storageLocation,
     QuantityIn: r.quantityIn,
     QuantityOut: r.quantityOut,
     Balance: r.balance,

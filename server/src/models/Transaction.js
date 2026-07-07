@@ -26,6 +26,7 @@ const transactionSchema = new mongoose.Schema(
     totalCost: { type: Number, min: 0, default: 0 },
     paymentMethod: { type: String, trim: true },
     supplierVendor: { type: String, trim: true },
+    storageLocation: { type: String, trim: true },
     quantityIn: { type: Number, min: 0, default: 0 },
     quantityOut: { type: Number, min: 0, default: 0 },
     balance: { type: Number, default: 0 },
