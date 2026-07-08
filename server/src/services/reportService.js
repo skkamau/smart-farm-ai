@@ -95,6 +95,7 @@ function transactionQuery(user, filters = {}, section) {
   const query = { user };
   if (section) query.financeSection = section;
   if (filters.financeSection) query.financeSection = filters.financeSection;
+  if (filters.financeSections) query.financeSection = { $in: String(filters.financeSections).split(",").filter(Boolean) };
   if (filters.crop) query.crop = filters.crop;
   if (filters.animal) query.animal = filters.animal;
   if (filters.category) query.category = filters.category;
@@ -125,6 +126,9 @@ function transactionRows(rows) {
     PaymentMethod: r.paymentMethod,
     SupplierVendor: r.supplierVendor,
     StorageLocation: r.storageLocation,
+    InventoryStatus: r.inventoryStatus,
+    MinimumStockLevel: r.minimumStockLevel,
+    ExpiryDate: r.expiryDate,
     QuantityIn: r.quantityIn,
     QuantityOut: r.quantityOut,
     Balance: r.balance,

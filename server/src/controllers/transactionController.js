@@ -10,6 +10,7 @@ export const transactionRules = [
   body("unitCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("quantityIn").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("quantityOut").optional({ values: "falsy" }).isFloat({ min: 0 }),
+  body("minimumStockLevel").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("serviceCharge").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("medicineCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("transportCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
@@ -19,7 +20,7 @@ export const transactionRules = [
 
 function normalizePayload(body) {
   const out = { ...body };
-  const numberFields = ["amount", "quantity", "unitCost", "totalCost", "quantityIn", "quantityOut", "balance", "cashAmount", "savingsAmount", "serviceCharge", "medicineCost", "transportCost", "otherCost"];
+  const numberFields = ["amount", "quantity", "unitCost", "totalCost", "quantityIn", "quantityOut", "balance", "cashAmount", "savingsAmount", "serviceCharge", "medicineCost", "transportCost", "otherCost", "minimumStockLevel"];
   for (const field of numberFields) {
     if (out[field] === "" || out[field] === undefined || out[field] === null) continue;
     out[field] = Number(out[field]);

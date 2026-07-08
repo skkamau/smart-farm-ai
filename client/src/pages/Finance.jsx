@@ -24,20 +24,19 @@ const tabs = [
   { id: "Reports", label: "Reports" }
 ];
 
-const financeGroups = [
-  { title: "Dashboard", description: "Cash flow, profit and farm health", tabs: ["Overview"] },
-  { title: "Income", description: "Sales, income and cash records", tabs: ["Income", "CashSavings"] },
-  { title: "Expenses", description: "General, crop and animal costs", tabs: ["Expenses", "CropExpense", "AnimalHealth"] },
-  { title: "Inventory", description: "Current stock and non-current tools", tabs: ["Inventory", "Equipment", "Feed", "Fuel", "Consumables"] },
-  { title: "Budget", description: "Construction, stock and asset costs", tabs: ["Construction", "Equipment", "Feed", "Fuel", "Consumables"] },
-  { title: "Reports", description: "Monthly and category summaries", tabs: ["Reports"] },
-  { title: "Analytics", description: "Category trends and income patterns", tabs: ["Overview", "Reports"] },
-  { title: "Downloads", description: "PDF, CSV and Excel exports", tabs: [] },
-  { title: "Settings", description: "Finance setup and record structure", tabs: [] }
+const workspaceTabs = [
+  { id: "Overview", label: "Overview" },
+  { id: "Income", label: "Income" },
+  { id: "Expenses", label: "Expenses" },
+  { id: "Inventory", label: "Inventory" },
+  { id: "Reports", label: "Reports" },
+  { id: "Downloads", label: "Downloads" },
+  { id: "Settings", label: "Settings" }
 ];
 
 const stockSections = ["Feed", "Fuel", "Consumables"];
 const inventorySections = ["Equipment", "Feed", "Fuel", "Consumables"];
+const expenseSections = ["Expenses", "CropExpense", "AnimalHealth", "Construction", "Feed", "Fuel", "Equipment", "Consumables"];
 const paymentMethods = ["Mpesa", "Bank Transfer", "Cash", "Other"];
 
 const sectionItems = {
@@ -68,6 +67,9 @@ const emptyRecord = {
   animal: "",
   supplierVendor: "",
   storageLocation: "",
+  inventoryStatus: "",
+  minimumStockLevel: "",
+  expiryDate: "",
   quantityIn: "",
   quantityOut: "",
   balance: "",
@@ -106,11 +108,7 @@ export default function Finance() {
 
   const summary = useMemo(() => buildSummary(records), [records]);
   const filteredRecords = useMemo(() => {
-    let sectionRecords = activeTab === "Overview" || activeTab === "Reports"
-      ? records
-      : activeTab === "Inventory"
-        ? records.filter((record) => inventorySections.includes(sectionOf(record)))
-        : records.filter((record) => sectionOf(record) === activeTab);
+    let sectionRecords = recordsForWorkspace(activeTab, records);
     if (filters.crop) sectionRecords = sectionRecords.filter((record) => entityId(record.crop) === filters.crop);
     if (filters.animal) sectionRecords = sectionRecords.filter((record) => entityId(record.animal) === filters.animal);
     if (filters.category) sectionRecords = sectionRecords.filter((record) => record.category === filters.category);
@@ -130,133 +128,62 @@ export default function Finance() {
   }
 
   function startAdd(section = activeTab) {
-    const financeSection = section === "Overview" || section === "Reports" ? "Expenses" : section === "Inventory" ? "Feed" : section;
+    const financeSection = section === "Overview" || section === "Reports" || section === "Downloads" || section === "Settings" ? "Expenses" : section === "Inventory" ? "Feed" : section;
     setEditing({ ...emptyRecord, financeSection, category: defaultCategory(financeSection), item: sectionItems[financeSection]?.[0] || "" });
   }
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Finance" eyebrow="Subukia goat shed records" action={<button className="btn-primary" onClick={() => startAdd()}><Plus className="h-4 w-4" /> Add record</button>} />
-
-      <FinanceHero summary={summary} records={records} />
+      <PageHeader title="Finance" eyebrow="Subukia goat shed records" action={<FinancePrimaryAction activeTab={activeTab} onAdd={startAdd} />} />
       <FinanceNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
-        <main className="min-w-0 space-y-5">
-          {activeTab !== "Inventory" && <FinanceFilters records={records} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} />}
-
-          {activeTab === "Overview" && <Overview summary={summary} records={records} onAdd={startAdd} onOpenInventory={() => setActiveTab("Inventory")} />}
-          {activeTab === "Inventory" && <Inventory records={filteredRecords} summary={summary} onAdd={startAdd} onEdit={setEditing} onDelete={remove} onBack={() => setActiveTab("Overview")} />}
-          {activeTab === "Reports" && <Reports summary={summary} records={records} />}
-          {!["Overview", "Inventory", "Reports"].includes(activeTab) && (
-            <>
-              <SectionSummary section={activeTab} records={filteredRecords} onAdd={() => startAdd(activeTab)} />
-              <FinanceList records={filteredRecords} section={activeTab} onEdit={setEditing} onDelete={remove} />
-            </>
-          )}
-        </main>
-
-        <aside className="space-y-5">
-          <FinanceExportBar activeTab={activeTab} filters={filters} />
-          <QuickAddPanel onAdd={startAdd} />
-          <FinanceSettingsPanel activeTab={activeTab} />
-        </aside>
-      </div>
+      {activeTab === "Overview" && <Overview summary={summary} onAdd={startAdd} onSelect={setActiveTab} />}
+      {activeTab === "Income" && (
+        <IncomeSection records={filteredRecords} allRecords={records} summary={summary} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} onAdd={() => startAdd("Income")} onEdit={setEditing} onDelete={remove} />
+      )}
+      {activeTab === "Expenses" && (
+        <ExpensesSection records={filteredRecords} allRecords={records} summary={summary} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} onAdd={startAdd} onEdit={setEditing} onDelete={remove} />
+      )}
+      {activeTab === "Inventory" && <Inventory records={filteredRecords} summary={summary} onAdd={startAdd} onEdit={setEditing} onDelete={remove} onBack={() => setActiveTab("Overview")} />}
+      {activeTab === "Reports" && <Reports summary={summary} records={records} />}
+      {activeTab === "Downloads" && <DownloadsSection filters={filters} />}
+      {activeTab === "Settings" && <FinanceSettingsPanel activeTab={activeTab} />}
 
       {editing && <FinanceModal record={editing} crops={crops} animals={animals} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
     </div>
   );
 }
 
-function FinanceHero({ summary, records }) {
-  const net = summary.totalIncome - summary.totalExpenses;
-  const monthlyCashFlow = summary.monthlyIncome - summary.monthlyExpenses;
-  const health = net >= 0 ? "Healthy" : "Needs attention";
-  return (
-    <section className="overflow-hidden rounded-2xl border border-farm-100 bg-white shadow-soft">
-      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="bg-farm-900 p-5 text-white sm:p-6">
-          <div className="text-xs font-black uppercase tracking-widest text-field-sage">Finance dashboard</div>
-          <h2 className="mt-3 text-2xl font-black sm:text-3xl">Farm money, costs and records in one clean workspace</h2>
-          <p className="mt-3 max-w-2xl text-sm text-field-cream">Track income, expenses, stock, animal health costs, crop costs, exports and reports without leaving the Finance module.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <HeroMetric label="Net profit/loss" value={currency.format(net)} tone={net >= 0 ? "good" : "warn"} />
-            <HeroMetric label="Monthly cash flow" value={currency.format(monthlyCashFlow)} tone={monthlyCashFlow >= 0 ? "good" : "warn"} />
-            <HeroMetric label="Records saved" value={records.length.toLocaleString()} />
-          </div>
-        </div>
-        <div className="grid gap-3 bg-field-cream/70 p-5 sm:grid-cols-2 sm:p-6">
-          <MiniStat label="Total income" value={currency.format(summary.totalIncome)} />
-          <MiniStat label="Total expenses" value={currency.format(summary.totalExpenses)} />
-          <MiniStat label="Cash available" value={currency.format(summary.cash)} />
-          <MiniStat label="Financial health" value={health} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function HeroMetric({ label, value, tone }) {
-  const toneClass = tone === "warn" ? "text-amber-200" : tone === "good" ? "text-field-sage" : "text-white";
-  return (
-    <div className="rounded-xl border border-white/15 bg-white/10 p-3">
-      <div className="text-[11px] font-black uppercase tracking-wide text-white/60">{label}</div>
-      <div className={`mt-2 text-lg font-black ${toneClass}`}>{value}</div>
-    </div>
-  );
+function FinancePrimaryAction({ activeTab, onAdd }) {
+  if (activeTab === "Income") return <button className="btn-primary" onClick={() => onAdd("Income")}><Plus className="h-4 w-4" /> Add Income</button>;
+  if (activeTab === "Expenses") return <button className="btn-primary" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add Expense</button>;
+  if (activeTab === "Inventory") return <button className="btn-primary" onClick={() => onAdd("Feed")}><Plus className="h-4 w-4" /> Add Inventory</button>;
+  return <button className="btn-primary" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add record</button>;
 }
 
 function FinanceNavigation({ activeTab, setActiveTab }) {
   return (
-    <section className="card p-4">
-      <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div>
-          <div className="label">Finance workspace</div>
-          <h2 className="mt-1 text-lg font-black text-farm-950">Organized by daily farm work</h2>
-        </div>
-        <div className="text-sm font-semibold text-slate-500">{labelFor(activeTab)} selected</div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {financeGroups.map((group) => (
-          <div key={group.title} className="rounded-xl border border-farm-100 bg-field-cream/50 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-black text-farm-950">{group.title}</div>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{group.description}</p>
-              </div>
-            </div>
-            {group.tabs.length ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {group.tabs.map((tabId) => {
-                  const tab = tabs.find((item) => item.id === tabId);
-                  return (
-                    <button key={tabId} className={activeTab === tabId ? "btn-primary px-3 py-2 text-xs" : "btn-muted px-3 py-2 text-xs"} onClick={() => setActiveTab(tabId)}>
-                      {tab?.label || labelFor(tabId)}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-3 rounded-lg bg-white p-3 text-xs font-semibold leading-5 text-slate-500">
-                Available in the right panel for the selected records.
-              </p>
-            )}
-          </div>
+    <section className="card p-3">
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {workspaceTabs.map((tab) => (
+          <button key={tab.id} className={activeTab === tab.id ? "btn-primary whitespace-nowrap" : "btn-muted whitespace-nowrap"} onClick={() => setActiveTab(tab.id)}>
+            {tab.label}
+          </button>
         ))}
       </div>
     </section>
   );
 }
 
-function FinanceExportBar({ activeTab, filters }) {
+function FinanceExportBar({ activeTab, filters, title = "Export current finance view", exportParams = {} }) {
   const type = financeExportType(activeTab);
-  const params = { ...filters };
+  const params = { ...filters, ...exportParams };
   Object.keys(params).forEach((key) => !params[key] && delete params[key]);
   const base = `finance_${type}_${todayStamp()}`;
   return (
     <section className="card p-4">
       <div className="label">Downloads</div>
-      <div className="mt-1 font-black text-farm-950">Export current finance view</div>
+      <div className="mt-1 font-black text-farm-950">{title}</div>
       <p className="mt-2 text-sm font-semibold text-slate-500">Downloads respect the active section and filters.</p>
       <div className="mt-4 grid gap-2">
         <button className="btn-primary" onClick={() => downloadReport(type, "pdf", `${base}.pdf`, params)}><Download className="h-4 w-4" /> PDF</button>
@@ -286,64 +213,32 @@ function financeExportType(tab) {
   return map[tab] || "finance";
 }
 
-function Overview({ summary, records, onAdd, onOpenInventory }) {
-  const categoryRows = Object.entries(summary.byCategory).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const incomeRows = Object.entries(summary.byIncomeSource).sort((a, b) => b[1] - a[1]).slice(0, 5);
+function Overview({ summary, onAdd, onSelect }) {
+  const inventory = summary.currentInventoryValue + summary.nonCurrentInventoryValue;
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total farm income" value={currency.format(summary.totalIncome)} />
-        <StatCard label="Total farm expenses" value={currency.format(summary.totalExpenses)} tone="amber" />
+      <section className="card p-5">
+        <div className="label">Finance overview</div>
+        <h2 className="mt-1 text-xl font-black text-farm-950">Key farm money numbers</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-500">Choose a section below when you need details, records, reports, or downloads.</p>
+      </section>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Total Income" value={currency.format(summary.totalIncome)} />
+        <StatCard label="Total Expenses" value={currency.format(summary.totalExpenses)} tone="amber" />
         <StatCard label="Profit / loss" value={currency.format(summary.totalIncome - summary.totalExpenses)} tone={summary.totalIncome >= summary.totalExpenses ? "slate" : "amber"} />
-        <StatCard label="Monthly cash flow" value={currency.format(summary.monthlyIncome - summary.monthlyExpenses)} tone={summary.monthlyIncome >= summary.monthlyExpenses ? "slate" : "amber"} />
+        <StatCard label="Cash Available" value={currency.format(summary.cash)} />
+        <StatCard label="Inventory Value" value={currency.format(inventory)} tone="slate" />
+        <StatCard label="Low Stock Alerts" value={summary.lowStockItems.toLocaleString()} tone={summary.lowStockItems ? "amber" : "slate"} />
       </div>
-      <button className="card mt-5 w-full p-5 text-left transition hover:-translate-y-0.5 hover:border-farm-300" onClick={onOpenInventory}>
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <div className="label">Inventory shortcut</div>
-            <h2 className="mt-1 text-xl font-black text-farm-950">Open Inventory</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">View current stock, non-current tools, low-stock items, and inventory records.</p>
-          </div>
-          <span className="btn-primary self-start sm:self-auto"><Plus className="h-4 w-4" /> Inventory</span>
+      <section className="card p-5">
+        <div className="label">Shortcuts</div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <button className="btn-primary justify-center" onClick={() => onAdd("Income")}><Plus className="h-4 w-4" /> Add Income</button>
+          <button className="btn-muted justify-center" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add Expense</button>
+          <button className="btn-muted justify-center" onClick={() => onSelect("Inventory")}>Open Inventory</button>
+          <button className="btn-muted justify-center" onClick={() => onSelect("Reports")}>View Reports</button>
         </div>
-      </button>
-      <div className="mt-5 grid gap-5 xl:grid-cols-3">
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Recent finance activity</h2>
-          <div className="space-y-3">
-            {records.slice(0, 6).map((record) => <FinanceRow key={record._id} record={record} />)}
-            {!records.length && <div className="text-sm text-slate-500">No finance records yet.</div>}
-          </div>
-        </section>
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Top expense categories</h2>
-          <div className="space-y-2">
-            {categoryRows.map(([label, value]) => <ProgressRow key={label} label={label} value={value} total={summary.totalExpenses || 1} />)}
-            {!categoryRows.length && <div className="text-sm text-slate-500">No expense categories yet.</div>}
-          </div>
-        </section>
-        <section className="card p-5">
-          <h2 className="mb-4 font-black text-farm-950">Income sources</h2>
-          <div className="space-y-2">
-            {incomeRows.map(([label, value]) => <ProgressRow key={label} label={label} value={value} total={summary.totalIncome || 1} />)}
-            {!incomeRows.length && <div className="text-sm text-slate-500">No income sources yet.</div>}
-          </div>
-        </section>
-      </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Crop expenses" value={currency.format(summary.cropExpenses)} tone="amber" />
-        <StatCard label="Vet/health expenses" value={currency.format(summary.animalHealth)} tone="amber" />
-        <StatCard label="Highest cost crop" value={summary.highestCrop.label} detail={currency.format(summary.highestCrop.value)} tone="slate" />
-        <StatCard label="Highest cost animal" value={summary.highestAnimal.label} detail={currency.format(summary.highestAnimal.value)} tone="slate" />
-        <StatCard label="Construction costs" value={currency.format(summary.construction)} />
-        <StatCard label="Feed costs" value={currency.format(summary.feed)} tone="slate" />
-        <StatCard label="Fuel costs" value={currency.format(summary.fuel)} tone="amber" />
-        <StatCard label="Equipment value" value={currency.format(summary.equipment)} />
-        <StatCard label="Consumables stock" value={summary.consumablesBalance.toLocaleString()} detail="current balance" tone="slate" />
-        <StatCard label="Cash available" value={currency.format(summary.cash)} />
-        <StatCard label="Savings" value={currency.format(summary.savings)} tone="slate" />
-        <StatCard label="Monthly vet costs" value={currency.format(summary.monthlyHealth)} />
-      </div>
+      </section>
     </>
   );
 }
@@ -361,6 +256,117 @@ function ProgressRow({ label, value, total }) {
       </div>
     </div>
   );
+}
+
+function IncomeSection({ records, allRecords, summary, crops, animals, filters, setFilters, search, setSearch, onAdd, onEdit, onDelete }) {
+  const sources = Object.entries(summary.byIncomeSource).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return (
+    <div className="space-y-5">
+      <SectionHeader eyebrow="Income" title="Farm income records" description="Sales, cash income, and savings records stay here without expense or inventory clutter." action={<button className="btn-primary" onClick={onAdd}><Plus className="h-4 w-4" /> Add Income</button>} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Total Income" value={currency.format(summary.totalIncome)} />
+        <StatCard label="This Month" value={currency.format(summary.monthlyIncome)} tone="slate" />
+        <StatCard label="Cash & Savings" value={currency.format(summary.cash + summary.savings)} />
+      </div>
+      <FinanceFilters records={allRecords.filter((record) => record.type === "income")} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} />
+      <section className="grid gap-5 xl:grid-cols-[0.7fr_1fr]">
+        <div className="card p-5">
+          <h3 className="mb-4 font-black text-farm-950">Income source breakdown</h3>
+          <div className="space-y-2">
+            {sources.map(([label, value]) => <ProgressRow key={label} label={label} value={value} total={summary.totalIncome || 1} />)}
+            {!sources.length && <EmptyState text="No income sources added yet." />}
+          </div>
+        </div>
+        <div>
+          <FinanceList records={records} section="Income" onEdit={onEdit} onDelete={onDelete} emptyText="No income added yet." />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ExpensesSection({ records, allRecords, summary, crops, animals, filters, setFilters, search, setSearch, onAdd, onEdit, onDelete }) {
+  const [expenseFilter, setExpenseFilter] = useState("All");
+  const filtered = records.filter((record) => {
+    if (expenseFilter === "All") return true;
+    if (expenseFilter === "CropExpense") return sectionOf(record) === "CropExpense";
+    if (expenseFilter === "AnimalHealth") return sectionOf(record) === "AnimalHealth";
+    return sectionOf(record) === expenseFilter;
+  });
+  const expenseOptions = [
+    ["All", "All expenses"],
+    ["CropExpense", "Crop expenses"],
+    ["AnimalHealth", "Animal health"],
+    ["Feed", "Feed"],
+    ["Fuel", "Fuel"],
+    ["Equipment", "Equipment"],
+    ["Construction", "Construction"],
+    ["Consumables", "Consumables"]
+  ];
+  return (
+    <div className="space-y-5">
+      <SectionHeader eyebrow="Expenses" title="Manage farm expenses" description="Review and record costs without inventory, downloads, or settings taking over the page." action={<button className="btn-primary" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add Expense</button>} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Total Expenses" value={currency.format(summary.totalExpenses)} tone="amber" />
+        <StatCard label="Crop Expenses" value={currency.format(summary.cropExpenses)} tone="amber" />
+        <StatCard label="Animal Health Expenses" value={currency.format(summary.animalHealth)} tone="amber" />
+        <StatCard label="Feed Costs" value={currency.format(summary.feed)} />
+        <StatCard label="Fuel Costs" value={currency.format(summary.fuel)} tone="amber" />
+        <StatCard label="Equipment Costs" value={currency.format(summary.equipment)} />
+      </div>
+      <FinanceFilters records={allRecords.filter((record) => record.type === "expense")} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} />
+      <section className="card p-4">
+        <div className="label mb-3">Expense type</div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {expenseOptions.map(([value, label]) => (
+            <button key={value} className={expenseFilter === value ? "btn-primary whitespace-nowrap" : "btn-muted whitespace-nowrap"} onClick={() => setExpenseFilter(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+      <FinanceList records={filtered} section="Expenses" onEdit={onEdit} onDelete={onDelete} emptyText="No expenses added yet." />
+    </div>
+  );
+}
+
+function SectionHeader({ eyebrow, title, description, action }) {
+  return (
+    <section className="card p-5">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <div className="label">{eyebrow}</div>
+          <h2 className="mt-1 text-xl font-black text-farm-950">{title}</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{description}</p>
+        </div>
+        {action}
+      </div>
+    </section>
+  );
+}
+
+function DownloadsSection({ filters }) {
+  const exportRows = [
+    ["Export all finance data", "Overview", {}],
+    ["Export income", "Income", { type: "income" }],
+    ["Export expenses", "Expenses", { type: "expense" }],
+    ["Export inventory", "Inventory", { financeSections: inventorySections.join(",") }],
+    ["Export reports", "Reports", {}]
+  ];
+  return (
+    <div className="space-y-5">
+      <SectionHeader eyebrow="Downloads" title="Export finance records" description="All finance export buttons are collected here so daily work screens stay clean." />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {exportRows.map(([label, type, exportParams]) => (
+          <FinanceExportBar key={label} activeTab={type} filters={filters} title={label} exportParams={exportParams} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ text }) {
+  return <div className="rounded-xl border border-dashed border-farm-100 bg-white p-8 text-center text-sm font-semibold text-slate-500">{text}</div>;
 }
 
 function QuickAddPanel({ onAdd }) {
@@ -401,13 +407,19 @@ function Inventory({ records, summary, onAdd, onEdit, onDelete, onBack }) {
   const currentItems = allItems.filter((item) => item.kind === "Current");
   const nonCurrentItems = allItems.filter((item) => item.kind === "NonCurrent");
   const filteredItems = allItems.filter((item) => {
-    if (inventoryFilter !== "All" && item.kind !== inventoryFilter) return false;
+    if (inventoryFilter === "Current" && item.kind !== "Current") return false;
+    if (inventoryFilter === "NonCurrent" && item.kind !== "NonCurrent") return false;
+    if (inventoryFilter === "LowStock" && !item.lowStock) return false;
+    if (inventoryFilter === "Finished" && item.status !== "Finished") return false;
+    if (inventoryFilter === "ExpiringSoon" && !item.expiringSoon) return false;
     const term = inventorySearch.trim().toLowerCase();
     if (!term) return true;
-    return [item.name, item.category, item.unit, item.storageLocation, item.status].join(" ").toLowerCase().includes(term);
+    return [item.name, item.category, item.unit, item.storageLocation, item.status, item.supplierVendor].join(" ").toLowerCase().includes(term);
   });
   const currentValue = currentItems.reduce((sum, item) => sum + item.value, 0);
+  const nonCurrentValue = nonCurrentItems.reduce((sum, item) => sum + item.value, 0);
   const lowStockCount = currentItems.filter((item) => item.lowStock).length;
+  const finishedCount = allItems.filter((item) => item.status === "Finished").length;
 
   return (
     <div className="space-y-5">
@@ -424,11 +436,12 @@ function Inventory({ records, summary, onAdd, onEdit, onDelete, onBack }) {
             <button className="btn-muted" onClick={() => onAdd("Equipment")}>Add tool/equipment</button>
           </div>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <MiniStat label="Total inventory value" value={currency.format(currentValue + nonCurrentValue)} />
           <MiniStat label="Current inventory value" value={currency.format(currentValue)} />
-          <MiniStat label="Consumables balance" value={summary.consumablesBalance.toLocaleString()} />
-          <MiniStat label="Tools & equipment value" value={currency.format(summary.equipment)} />
-          <MiniStat label="Items needing review" value={lowStockCount.toLocaleString()} />
+          <MiniStat label="Non-current inventory value" value={currency.format(nonCurrentValue)} />
+          <MiniStat label="Low stock items" value={lowStockCount.toLocaleString()} />
+          <MiniStat label="Finished items" value={finishedCount.toLocaleString()} />
         </div>
       </section>
 
@@ -445,7 +458,10 @@ function Inventory({ records, summary, onAdd, onEdit, onDelete, onBack }) {
             {[
               ["All", "All inventory"],
               ["Current", "Current Inventory"],
-              ["NonCurrent", "Non-Current Inventory"]
+              ["NonCurrent", "Non-Current Inventory"],
+              ["LowStock", "Low Stock"],
+              ["Finished", "Finished"],
+              ["ExpiringSoon", "Expiring Soon"]
             ].map(([value, label]) => (
               <button key={value} className={inventoryFilter === value ? "btn-primary whitespace-nowrap" : "btn-muted whitespace-nowrap"} onClick={() => setInventoryFilter(value)}>
                 {label}
@@ -472,6 +488,7 @@ function Inventory({ records, summary, onAdd, onEdit, onDelete, onBack }) {
                     <h4 className="truncate text-lg font-black text-farm-950">{item.name}</h4>
                     <span className="badge bg-white text-farm-900">{item.kind === "Current" ? "Current" : "Non-current"}</span>
                     {item.lowStock && <span className="badge bg-red-100 text-red-700">Low stock</span>}
+                    {item.expiringSoon && <span className="badge bg-amber-100 text-amber-700">Expiring soon</span>}
                   </div>
                   <p className="mt-1 text-sm font-semibold text-slate-500">{item.category} - {item.storageLocation || "No storage location"}</p>
                 </div>
@@ -487,6 +504,9 @@ function Inventory({ records, summary, onAdd, onEdit, onDelete, onBack }) {
                 <Info label="Value" value={currency.format(item.value)} />
                 <Info label="Status" value={item.status} />
                 <Info label="Storage" value={item.storageLocation || "-"} />
+                <Info label="Minimum" value={item.minimumStockLevel || "-"} />
+                <Info label="Expiry" value={item.expiryDate ? formatDate(item.expiryDate) : "-"} />
+                <Info label="Supplier" value={item.supplierVendor || "-"} />
               </div>
             </article>
           ))}
@@ -585,7 +605,7 @@ function Reports({ summary, records }) {
   );
 }
 
-function FinanceList({ records, section, onEdit, onDelete }) {
+function FinanceList({ records, section, onEdit, onDelete, emptyText = "No records in this section yet." }) {
   return (
     <div className="space-y-3">
       {records.map((record) => (
@@ -608,7 +628,7 @@ function FinanceList({ records, section, onEdit, onDelete }) {
           {(record.remarks || record.notes) && <p className="mt-3 text-sm text-slate-500">{record.remarks || record.notes}</p>}
         </article>
       ))}
-      {!records.length && <div className="card p-8 text-center text-sm text-slate-500">No records in this section yet.</div>}
+      {!records.length && <EmptyState text={emptyText} />}
     </div>
   );
 }
@@ -658,6 +678,10 @@ function FinanceModal({ record, crops, animals, onClose, onSaved }) {
       crop: form.crop || null,
       animal: form.animal || null,
       supplierVendor: form.supplierVendor,
+      storageLocation: form.storageLocation,
+      inventoryStatus: form.inventoryStatus,
+      minimumStockLevel: Number(form.minimumStockLevel || 0),
+      expiryDate: form.expiryDate || null,
       quantityIn,
       quantityOut,
       balance: Number(form.balance || quantityIn - quantityOut || 0),
@@ -707,6 +731,21 @@ function FinanceModal({ record, crops, animals, onClose, onSaved }) {
         {!isCash && <label className="space-y-1"><span className="label">Payment method</span><select className="input" value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })}>{paymentMethods.map((method) => <option key={method}>{method}</option>)}</select></label>}
         {(isCropExpense || isAnimalHealth) && <Field label="Supplier / vendor / clinic" value={form.supplierVendor || ""} onChange={(v) => setForm({ ...form, supplierVendor: v })} />}
         {isInventorySection && <Field label="Storage location" value={form.storageLocation || ""} onChange={(v) => setForm({ ...form, storageLocation: v })} />}
+        {isInventorySection && <Field label="Supplier" value={form.supplierVendor || ""} onChange={(v) => setForm({ ...form, supplierVendor: v })} />}
+        {isInventorySection && <Field label="Minimum stock level" type="number" value={form.minimumStockLevel || ""} onChange={(v) => setForm({ ...form, minimumStockLevel: v })} />}
+        {isInventorySection && <Field label="Expiry date" type="date" value={form.expiryDate || ""} onChange={(v) => setForm({ ...form, expiryDate: v })} />}
+        {isInventorySection && (
+          <label className="space-y-1">
+            <span className="label">Status</span>
+            <select className="input" value={form.inventoryStatus || ""} onChange={(event) => setForm({ ...form, inventoryStatus: event.target.value })}>
+              <option value="">Auto</option>
+              <option value="In stock">In stock</option>
+              <option value="Low stock">Low stock</option>
+              <option value="Finished">Finished</option>
+              <option value="Needs update">Needs update</option>
+            </select>
+          </label>
+        )}
         <label className="space-y-1 sm:col-span-2"><span className="label">Remarks</span><textarea className="input min-h-20" value={form.remarks || ""} onChange={(event) => setForm({ ...form, remarks: event.target.value })} /></label>
         <div className="rounded-lg bg-field-cream p-3 text-sm font-semibold text-slate-600 sm:col-span-2">
           Total Cost: {currency.format((isAnimalHealth ? Number(form.serviceCharge || 0) + Number(form.medicineCost || 0) + Number(form.transportCost || 0) + Number(form.otherCost || 0) : Number(form.quantity || 0) * Number(form.unitCost || 0)) || Number(form.amount || 0) || Number(form.cashAmount || 0) || Number(form.savingsAmount || 0))}
@@ -752,6 +791,13 @@ function Info({ label, value }) {
 
 function MiniStat({ label, value }) {
   return <div className="rounded-lg border border-farm-100 bg-white p-3"><div className="label">{label}</div><div className="mt-1 font-black text-farm-950">{value}</div></div>;
+}
+
+function recordsForWorkspace(activeTab, records) {
+  if (activeTab === "Income") return records.filter((record) => record.type === "income" || sectionOf(record) === "CashSavings");
+  if (activeTab === "Expenses") return records.filter((record) => record.type === "expense" && expenseSections.includes(sectionOf(record)));
+  if (activeTab === "Inventory") return records.filter((record) => inventorySections.includes(sectionOf(record)));
+  return records;
 }
 
 function sectionOf(record) {
@@ -807,6 +853,10 @@ function aggregateInventory(records) {
         kind: stockSections.includes(section) ? "Current" : "NonCurrent",
         category: labelFor(section),
         storageLocation: record.storageLocation || "",
+        supplierVendor: record.supplierVendor || "",
+        inventoryStatus: record.inventoryStatus || "",
+        minimumStockLevel: Number(record.minimumStockLevel || 0),
+        expiryDate: record.expiryDate || "",
         latestRecord: record,
         unit: record.unit || "",
         quantity: 0,
@@ -818,6 +868,10 @@ function aggregateInventory(records) {
     }
     grouped[key].unit = grouped[key].unit || record.unit || "";
     grouped[key].storageLocation = grouped[key].storageLocation || record.storageLocation || "";
+    grouped[key].supplierVendor = grouped[key].supplierVendor || record.supplierVendor || "";
+    grouped[key].inventoryStatus = record.inventoryStatus || grouped[key].inventoryStatus || "";
+    grouped[key].minimumStockLevel = Number(record.minimumStockLevel || grouped[key].minimumStockLevel || 0);
+    grouped[key].expiryDate = record.expiryDate || grouped[key].expiryDate || "";
     grouped[key].latestRecord = newerRecord(record, grouped[key].latestRecord) ? record : grouped[key].latestRecord;
     grouped[key].quantity += Number(record.quantity || 0);
     grouped[key].quantityIn += Number(record.quantityIn || 0);
@@ -829,11 +883,15 @@ function aggregateInventory(records) {
     .map((item) => {
       const displayQuantity = stockSections.includes(item.section) ? item.balance : item.quantity;
       const lowStock = isLowStockItem(item, displayQuantity);
+      const expiringSoon = isExpiringSoon(item.expiryDate);
+      const explicitStatus = item.inventoryStatus || "";
+      const status = explicitStatus || (displayQuantity <= 0 ? "Finished" : lowStock ? "Low stock" : "In stock");
       return {
         ...item,
         displayQuantity,
         lowStock,
-        status: lowStock ? "Low stock" : displayQuantity > 0 ? "In stock" : "Needs update"
+        expiringSoon,
+        status
       };
     })
     .sort((a, b) => a.kind.localeCompare(b.kind) || a.section.localeCompare(b.section) || a.name.localeCompare(b.name));
@@ -850,7 +908,19 @@ function isLowStockItem(item, quantity) {
   if (item.kind !== "Current") return false;
   const name = `${item.name} ${item.category}`.toLowerCase();
   const consumable = ["feed", "fuel", "fertilizer", "medicine", "seed", "seeds", "consumable"].some((term) => name.includes(term));
+  const minimum = Number(item.minimumStockLevel || 0);
+  if (minimum > 0) return Number(quantity || 0) <= minimum;
   return consumable && Number(quantity || 0) <= 5;
+}
+
+function isExpiringSoon(date) {
+  if (!date) return false;
+  const expiry = new Date(date).getTime();
+  if (Number.isNaN(expiry)) return false;
+  const now = new Date();
+  const soon = new Date(now);
+  soon.setDate(now.getDate() + 30);
+  return expiry >= now.getTime() && expiry <= soon.getTime();
 }
 
 function recordForEdit(record) {
@@ -866,6 +936,9 @@ function recordForEdit(record) {
     crop: entityId(record.crop) || "",
     animal: entityId(record.animal) || "",
     storageLocation: record.storageLocation || "",
+    inventoryStatus: record.inventoryStatus || "",
+    minimumStockLevel: record.minimumStockLevel || "",
+    expiryDate: inputDate(record.expiryDate),
     quantityIn: record.quantityIn || "",
     quantityOut: record.quantityOut || "",
     balance: record.balance || "",
@@ -896,6 +969,9 @@ function buildSummary(records) {
     fuel: 0,
     equipment: 0,
     consumablesBalance: 0,
+    currentInventoryValue: 0,
+    nonCurrentInventoryValue: 0,
+    lowStockItems: 0,
     cash: 0,
     savings: 0,
     feedOut: 0,
@@ -905,6 +981,10 @@ function buildSummary(records) {
     byCrop: {},
     byAnimal: {}
   };
+  const inventoryItems = aggregateInventory(records.filter((record) => inventorySections.includes(sectionOf(record))));
+  summary.currentInventoryValue = inventoryItems.filter((item) => item.kind === "Current").reduce((sum, item) => sum + item.value, 0);
+  summary.nonCurrentInventoryValue = inventoryItems.filter((item) => item.kind === "NonCurrent").reduce((sum, item) => sum + item.value, 0);
+  summary.lowStockItems = inventoryItems.filter((item) => item.lowStock).length;
   const currentMonth = new Date().toISOString().slice(0, 7);
   for (const record of records) {
     const section = sectionOf(record);
