@@ -10,11 +10,21 @@ import HealthRecord from "./models/HealthRecord.js";
 import Transaction from "./models/Transaction.js";
 import User from "./models/User.js";
 import VaccinationRecord from "./models/VaccinationRecord.js";
+import { isStrongPassword } from "./utils/passwordReset.js";
 import { ensureAnimalQr } from "./utils/qr.js";
 
 dotenv.config();
 
 async function seed() {
+  const seedEmail = process.env.SEED_USER_EMAIL || "admin@smartfarm.local";
+  const seedPassword = process.env.SEED_USER_PASSWORD;
+  if (!seedPassword) {
+    throw new Error("SEED_USER_PASSWORD is required before running the seed script");
+  }
+  if (!isStrongPassword(seedPassword)) {
+    throw new Error("SEED_USER_PASSWORD must be at least 8 characters and include uppercase, lowercase, number, and symbol");
+  }
+
   await connectDB();
   await Promise.all([
     User.deleteMany({}),
@@ -30,8 +40,8 @@ async function seed() {
 
   const user = await User.create({
     name: "Amina Farm Manager",
-    email: "admin@smartfarm.local",
-    password: "password123",
+    email: seedEmail,
+    password: seedPassword,
     farmName: "Green Valley Farm"
   });
 
@@ -191,7 +201,7 @@ async function seed() {
   ]);
 
   console.log("Seed complete");
-  console.log("Login: admin@smartfarm.local / password123");
+  console.log(`Seed user created: ${seedEmail}`);
   await mongoose.connection.close();
 }
 

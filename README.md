@@ -61,15 +61,12 @@ cp client/.env.example client/.env
 4. Seed sample data:
 
 ```bash
+$env:SEED_USER_EMAIL="admin@smartfarm.local"
+$env:SEED_USER_PASSWORD="Use-A-Strong-Password1!"
 npm run seed
 ```
 
-Seed login:
-
-```text
-Email: admin@smartfarm.local
-Password: password123
-```
+Use your own strong seed password and keep it private. The seed script will not print passwords to the terminal.
 
 5. Run the full app:
 

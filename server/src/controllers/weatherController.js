@@ -47,6 +47,14 @@ function numberOrUndefined(value) {
   return value === null || value === undefined ? undefined : Number(value);
 }
 
+function payload(body) {
+  const allowed = ["recordDate", "condition", "temperature", "rainfall", "humidity", "windSpeed", "impact", "notes"];
+  return allowed.reduce((out, key) => {
+    if (body[key] !== undefined) out[key] = body[key];
+    return out;
+  }, {});
+}
+
 export async function listWeather(req, res, next) {
   try {
     const records = await WeatherRecord.find({ user: req.user._id }).sort({ recordDate: -1 }).limit(90);
@@ -58,7 +66,7 @@ export async function listWeather(req, res, next) {
 
 export async function createWeather(req, res, next) {
   try {
-    const record = await WeatherRecord.create({ ...req.body, user: req.user._id });
+    const record = await WeatherRecord.create({ ...payload(req.body), user: req.user._id });
     res.status(201).json(record);
   } catch (error) {
     next(error);
@@ -108,7 +116,7 @@ export async function importCurrentWeather(req, res, next) {
 
 export async function updateWeather(req, res, next) {
   try {
-    const record = await WeatherRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, req.body, {
+    const record = await WeatherRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, payload(req.body), {
       new: true,
       runValidators: true
     });

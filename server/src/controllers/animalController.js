@@ -34,18 +34,24 @@ function animalPayload(body) {
   }, {});
 }
 
+function safeRegex(value) {
+  const text = String(value || "").slice(0, 80);
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+}
+
 export async function listAnimals(req, res, next) {
   try {
     const { search = "", status = "", species = "" } = req.query;
     const query = { user: req.user._id };
     if (status) query.status = status;
-    if (species) query.species = new RegExp(species, "i");
+    if (species) query.species = safeRegex(species);
     if (search) {
+      const regex = safeRegex(search);
       query.$or = [
-        { animalId: new RegExp(search, "i") },
-        { name: new RegExp(search, "i") },
-        { breed: new RegExp(search, "i") },
-        { species: new RegExp(search, "i") }
+        { animalId: regex },
+        { name: regex },
+        { breed: regex },
+        { species: regex }
       ];
     }
     const animals = await Animal.find(query).sort({ createdAt: -1 });

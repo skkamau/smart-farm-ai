@@ -16,6 +16,7 @@ const allowedTypes = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]);
+const allowedExtensions = new Set([".pdf", ".jpg", ".jpeg", ".png", ".webp", ".csv", ".xlsx", ".doc", ".docx"]);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -29,8 +30,11 @@ export const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (!allowedTypes.has(file.mimetype)) {
-      return cb(new Error("Unsupported file type"));
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!allowedTypes.has(file.mimetype) || !allowedExtensions.has(extension)) {
+      const error = new Error("Unsupported file type");
+      error.statusCode = 400;
+      return cb(error);
     }
     cb(null, true);
   }

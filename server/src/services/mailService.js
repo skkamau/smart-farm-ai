@@ -19,9 +19,9 @@ function transporter() {
 export async function sendPasswordResetEmail({ to, resetLink }) {
   if (!hasSmtpConfig()) {
     if (process.env.NODE_ENV !== "production") {
-      console.info("[auth] Password reset link generated for development testing", { to, resetLink });
+      console.info("[auth] Password reset email skipped because SMTP is not configured", { to });
     } else {
-      console.warn("[auth] SMTP is not configured; password reset email was not sent", { to });
+      console.warn("[auth] SMTP is not configured; password reset email was not sent");
     }
     return false;
   }

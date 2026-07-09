@@ -1,11 +1,10 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
-import path from "node:path";
 import { connectDB } from "./config/db.js";
+import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import animalRoutes from "./routes/animalRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -20,37 +19,32 @@ import transactionRoutes from "./routes/transactionRoutes.js";
 import vaccinationRoutes from "./routes/vaccinationRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
+import { globalLimiter } from "./middleware/rateLimits.js";
 
 dotenv.config();
+validateEnv();
 
 const app = express();
 const port = process.env.PORT || 5000;
 const host = process.env.HOST || "0.0.0.0";
-const allowedOrigins = new Set([
-  process.env.CLIENT_URL || "http://localhost:5173",
-  "https://smart-farm-ai-two.vercel.app",
-  "https://smart-farm-ai-skkamaus-projects.vercel.app",
-  "https://smart-farm-ai-git-main-skkamaus-projects.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174"
-]);
-const localNetworkOrigin = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+):517\d$/;
-const vercelPreviewOrigin = /^https:\/\/smart-farm-[a-z0-9-]+-skkamaus-projects\.vercel\.app$/;
-const vercelSmartFarmOrigin = /^https:\/\/smart-farm-ai[-a-z0-9]*\.vercel\.app$/;
+const originAllowlist = allowedOrigins();
 
-app.use(helmet());
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "same-site" }
+}));
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.has(origin) || localNetworkOrigin.test(origin) || vercelPreviewOrigin.test(origin) || vercelSmartFarmOrigin.test(origin)) return callback(null, true);
-    return callback(new Error(`CORS blocked origin: ${origin}`));
+    if (!origin || originAllowlist.has(origin) || isLocalNetworkOrigin(origin)) return callback(null, true);
+    return callback(new Error("CORS origin is not allowed"));
   }
 }));
 app.use(express.json({ limit: "1mb" }));
-app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
-app.use("/uploads", express.static(path.resolve("uploads")));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
+  skip: (req) => req.path === "/api/health"
+}));
+app.use(globalLimiter);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "Smart Farm AI API" }));
 app.use("/api/auth", authRoutes);

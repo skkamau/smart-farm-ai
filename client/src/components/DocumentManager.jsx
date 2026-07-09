@@ -2,14 +2,7 @@ import { Download, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../services/api";
-
-function resolveApiOrigin() {
-  const configured = import.meta.env.VITE_API_URL;
-  if (configured && configured !== "auto") return configured.replace(/\/api\/?$/, "");
-  return "";
-}
-
-const API_ORIGIN = resolveApiOrigin();
+import { saveBlob } from "../utils/downloads";
 
 export default function DocumentManager({ entityType, entityId }) {
   const [documents, setDocuments] = useState([]);
@@ -48,6 +41,11 @@ export default function DocumentManager({ entityType, entityId }) {
     load();
   }
 
+  async function download(doc) {
+    const { data } = await api.get(`/documents/${doc._id}/download`, { responseType: "blob" });
+    saveBlob(data, doc.originalName || "farm-document");
+  }
+
   if (!entityId) return null;
 
   return (
@@ -69,10 +67,10 @@ export default function DocumentManager({ entityType, entityId }) {
               <div className="text-xs text-slate-500">{Math.ceil(doc.size / 1024)} KB {doc.notes ? `- ${doc.notes}` : ""}</div>
             </div>
             <div className="flex gap-2">
-              <a className="btn-muted" href={`${API_ORIGIN}${doc.url}`} target="_blank" rel="noreferrer">
+              <button className="btn-muted" type="button" onClick={() => download(doc)}>
                 <Download className="h-4 w-4" />
                 Open
-              </a>
+              </button>
               <button className="btn-muted px-2 text-red-700" onClick={() => remove(doc._id)} type="button" aria-label="Delete document">
                 <Trash2 className="h-4 w-4" />
               </button>

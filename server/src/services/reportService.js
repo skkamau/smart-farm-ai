@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import mongoose from "mongoose";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import Animal from "../models/Animal.js";
@@ -18,6 +19,23 @@ const reportTypes = [
   "animal-health", "weather", "alerts", "monthly-expenses", "expense-by-category", "vet-costs",
   "health-costs", "full-summary", "ai"
 ];
+const financeSections = new Set(["Income", "Expenses", "CropExpense", "AnimalHealth", "Construction", "Equipment", "Feed", "Fuel", "Consumables", "CashSavings"]);
+const transactionTypes = new Set(["income", "expense"]);
+
+function scalar(value) {
+  return typeof value === "string" ? value : "";
+}
+
+function validObjectId(value) {
+  return mongoose.Types.ObjectId.isValid(scalar(value));
+}
+
+function validDate(value) {
+  const text = scalar(value);
+  if (!text) return null;
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 function fmt(value) {
   if (value === null || value === undefined || value === "") return "";
@@ -27,8 +45,17 @@ function fmt(value) {
 }
 
 function csvEscape(value) {
-  const text = fmt(value);
+  const text = safeSpreadsheetText(value);
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function safeSpreadsheetText(value) {
+  const text = fmt(value);
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
+function safeSpreadsheetRow(row) {
+  return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === "string" ? safeSpreadsheetText(value) : value]));
 }
 
 function bullet(doc, label, value) {
@@ -93,18 +120,25 @@ function moneyRows(transactions) {
 
 function transactionQuery(user, filters = {}, section) {
   const query = { user };
-  if (section) query.financeSection = section;
-  if (filters.financeSection) query.financeSection = filters.financeSection;
-  if (filters.financeSections) query.financeSection = { $in: String(filters.financeSections).split(",").filter(Boolean) };
-  if (filters.crop) query.crop = filters.crop;
-  if (filters.animal) query.animal = filters.animal;
-  if (filters.category) query.category = filters.category;
-  if (filters.paymentMethod) query.paymentMethod = filters.paymentMethod;
-  if (filters.type) query.type = filters.type;
+  if (section && financeSections.has(section)) query.financeSection = section;
+  const requestedSection = scalar(filters.financeSection);
+  if (requestedSection && financeSections.has(requestedSection)) query.financeSection = requestedSection;
+  const requestedSections = scalar(filters.financeSections)
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => financeSections.has(item));
+  if (requestedSections.length) query.financeSection = { $in: requestedSections };
+  if (validObjectId(filters.crop)) query.crop = filters.crop;
+  if (validObjectId(filters.animal)) query.animal = filters.animal;
+  if (scalar(filters.category)) query.category = scalar(filters.category).slice(0, 80);
+  if (scalar(filters.paymentMethod)) query.paymentMethod = scalar(filters.paymentMethod).slice(0, 80);
+  if (transactionTypes.has(scalar(filters.type))) query.type = scalar(filters.type);
   if (filters.dateFrom || filters.dateTo) {
-    query.transactionDate = {};
-    if (filters.dateFrom) query.transactionDate.$gte = new Date(filters.dateFrom);
-    if (filters.dateTo) query.transactionDate.$lte = new Date(filters.dateTo);
+    const from = validDate(filters.dateFrom);
+    const to = validDate(filters.dateTo);
+    if (from || to) query.transactionDate = {};
+    if (from) query.transactionDate.$gte = from;
+    if (to) query.transactionDate.$lte = to;
   }
   return query;
 }
@@ -277,7 +311,7 @@ export async function sendExcel(res, name, rows) {
   const sheet = workbook.addWorksheet("Report");
   const headers = rows.length ? [...new Set(rows.flatMap((row) => Object.keys(row)))] : ["Message"];
   sheet.columns = headers.map((header) => ({ header, key: header, width: Math.min(Math.max(header.length + 8, 14), 32) }));
-  rows.forEach((row) => sheet.addRow(row));
+  rows.forEach((row) => sheet.addRow(safeSpreadsheetRow(row)));
   sheet.getRow(1).font = { bold: true };
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${name}.xlsx"`);
@@ -518,11 +552,27 @@ const backupModels = {
   documents: Document,
   weather: WeatherRecord
 };
+const maxBackupRowsPerCollection = 1000;
+const unsafeReferenceFields = [
+  "crop",
+  "animal",
+  "mother",
+  "father",
+  "children",
+  "offspring",
+  "femaleAnimal",
+  "maleAnimal",
+  "healthRecord",
+  "vaccinationRecord",
+  "financeTransaction"
+];
 
 function cleanBackupRecord(record, user) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return null;
   const out = { ...record };
   delete out._id;
   delete out.__v;
+  unsafeReferenceFields.forEach((field) => delete out[field]);
   out.user = user;
   return out;
 }
@@ -542,12 +592,17 @@ export async function importBackupData(user, backup) {
   if (!data || typeof data !== "object") throw new Error("Invalid backup file");
   const result = {};
   for (const [key, Model] of Object.entries(backupModels)) {
+    if (key === "documents") {
+      result[key] = 0;
+      continue;
+    }
     const rows = Array.isArray(data[key]) ? data[key] : [];
     if (!rows.length) {
       result[key] = 0;
       continue;
     }
-    const cleaned = rows.map((row) => cleanBackupRecord(row, user));
+    if (rows.length > maxBackupRowsPerCollection) throw new Error(`Backup section ${key} contains too many records`);
+    const cleaned = rows.map((row) => cleanBackupRecord(row, user)).filter(Boolean);
     const inserted = await Model.insertMany(cleaned, { ordered: false });
     result[key] = inserted.length;
   }

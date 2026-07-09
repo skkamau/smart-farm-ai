@@ -43,7 +43,9 @@ const publicUser = (user) => ({
 export const registerRules = [
   body("name").trim().notEmpty().withMessage("Name is required"),
   body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
-  body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+  body("password")
+    .custom((value) => isStrongPassword(value))
+    .withMessage("Password must be at least 8 characters and include uppercase, lowercase, number, and symbol"),
   body("farmName").optional().trim()
 ];
 
@@ -99,13 +101,13 @@ export async function forgotPassword(req, res, next) {
 
   try {
     if (tooManyAttempts(ipKey) || tooManyAttempts(emailKey) || tooSoon(ipKey) || tooSoon(emailKey)) {
-      console.warn("[auth] Password reset rate limited", { email, ip });
+      console.warn("[auth] Password reset rate limited", { ip });
       return res.status(429).json({ message: "Too many reset attempts. Please wait and try again." });
     }
 
     const user = await User.findOne({ email }).select("+passwordResetRequestedAt +passwordResetTokenHash +passwordResetExpiresAt");
     if (!user) {
-      console.info("[auth] Password reset requested for non-existing account", { email, ip });
+      console.info("[auth] Password reset requested for non-existing account", { ip });
       return res.json({ message: genericResetMessage });
     }
 
