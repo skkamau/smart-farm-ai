@@ -37,7 +37,7 @@ app.use(helmet({
 app.use(cors({
   origin(origin, callback) {
     if (!origin || originAllowlist.has(origin) || isLocalNetworkOrigin(origin)) return callback(null, true);
-    return callback(new Error("CORS origin is not allowed"));
+    return callback(null, false);
   }
 }));
 app.use(express.json({ limit: "1mb" }));
