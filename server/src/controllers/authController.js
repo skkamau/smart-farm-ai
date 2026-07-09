@@ -37,7 +37,21 @@ const publicUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
-  farmName: user.farmName
+  farmName: user.farmName,
+  farmLocation: user.farmLocation || "",
+  farmType: user.farmType || "mixed",
+  mainActivities: user.mainActivities || "",
+  phone: user.phone || "",
+  preferences: {
+    theme: user.preferences?.theme || "system",
+    currency: user.preferences?.currency || "KES",
+    units: user.preferences?.units || "metric",
+    notifications: {
+      inventoryAlerts: user.preferences?.notifications?.inventoryAlerts ?? true,
+      animalHealthReminders: user.preferences?.notifications?.animalHealthReminders ?? true,
+      cropReminders: user.preferences?.notifications?.cropReminders ?? true
+    }
+  }
 });
 
 export const registerRules = [
@@ -64,6 +78,22 @@ export const resetPasswordRules = [
     .custom((value) => isStrongPassword(value))
     .withMessage("Password must be at least 8 characters and include uppercase, lowercase, number, and symbol"),
   body("confirmPassword").custom((value, { req }) => value === req.body.password).withMessage("Passwords must match")
+];
+
+export const profileUpdateRules = [
+  body("name").trim().notEmpty().withMessage("Owner name is required").isLength({ max: 120 }).withMessage("Owner name is too long"),
+  body("farmName").trim().notEmpty().withMessage("Farm name is required").isLength({ max: 120 }).withMessage("Farm name is too long"),
+  body("farmLocation").optional({ values: "falsy" }).trim().isLength({ max: 160 }).withMessage("Farm location is too long"),
+  body("farmType").optional({ values: "falsy" }).isIn(["crops", "livestock", "mixed", "other"]).withMessage("Choose a valid farm type"),
+  body("mainActivities").optional({ values: "falsy" }).trim().isLength({ max: 300 }).withMessage("Main animals/crops is too long"),
+  body("phone").optional({ values: "falsy" }).trim().isLength({ max: 40 }).withMessage("Phone number is too long"),
+  body("email").optional({ values: "falsy" }).isEmail().normalizeEmail().withMessage("Valid email is required"),
+  body("preferences.theme").optional({ values: "falsy" }).isIn(["light", "dark", "system"]).withMessage("Choose a valid theme"),
+  body("preferences.currency").optional({ values: "falsy" }).trim().isLength({ min: 2, max: 8 }).withMessage("Currency should be 2 to 8 characters"),
+  body("preferences.units").optional({ values: "falsy" }).isIn(["metric", "imperial", "mixed"]).withMessage("Choose valid units"),
+  body("preferences.notifications.inventoryAlerts").optional().isBoolean().toBoolean(),
+  body("preferences.notifications.animalHealthReminders").optional().isBoolean().toBoolean(),
+  body("preferences.notifications.cropReminders").optional().isBoolean().toBoolean()
 ];
 
 export async function register(req, res, next) {
@@ -168,4 +198,39 @@ export async function resetPassword(req, res, next) {
 
 export async function profile(req, res) {
   res.json({ user: publicUser(req.user) });
+}
+
+export async function updateProfile(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "Profile not found" });
+
+    if (req.body.email && req.body.email !== user.email) {
+      const exists = await User.exists({ email: req.body.email, _id: { $ne: user._id } });
+      if (exists) return res.status(409).json({ message: "Email is already registered" });
+      user.email = req.body.email;
+    }
+
+    user.name = req.body.name;
+    user.farmName = req.body.farmName;
+    user.farmLocation = req.body.farmLocation || "";
+    user.farmType = req.body.farmType || "mixed";
+    user.mainActivities = req.body.mainActivities || "";
+    user.phone = req.body.phone || "";
+    user.preferences = {
+      theme: req.body.preferences?.theme || user.preferences?.theme || "system",
+      currency: req.body.preferences?.currency || user.preferences?.currency || "KES",
+      units: req.body.preferences?.units || user.preferences?.units || "metric",
+      notifications: {
+        inventoryAlerts: req.body.preferences?.notifications?.inventoryAlerts ?? user.preferences?.notifications?.inventoryAlerts ?? true,
+        animalHealthReminders: req.body.preferences?.notifications?.animalHealthReminders ?? user.preferences?.notifications?.animalHealthReminders ?? true,
+        cropReminders: req.body.preferences?.notifications?.cropReminders ?? user.preferences?.notifications?.cropReminders ?? true
+      }
+    };
+
+    await user.save();
+    res.json({ user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
 }

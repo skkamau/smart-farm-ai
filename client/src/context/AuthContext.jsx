@@ -4,6 +4,16 @@ import { storageGet, storageRemove, storageSet } from "../utils/storage";
 
 const AuthContext = createContext(null);
 
+function applyTheme(theme) {
+  if (typeof window === "undefined") return;
+  const selected = theme || storageGet("smartFarmTheme") || "system";
+  storageSet("smartFarmTheme", selected);
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+  const useDark = selected === "dark" || (selected === "system" && prefersDark);
+  document.documentElement.classList.toggle("dark", Boolean(useDark));
+  document.documentElement.dataset.theme = selected;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const raw = storageGet("smartFarmUser");
@@ -16,6 +26,20 @@ export function AuthProvider({ children }) {
     }
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    applyTheme(user?.preferences?.theme);
+  }, [user?.preferences?.theme]);
+
+  useEffect(() => {
+    applyTheme();
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      if ((storageGet("smartFarmTheme") || "system") === "system") applyTheme("system");
+    };
+    media?.addEventListener?.("change", onChange);
+    return () => media?.removeEventListener?.("change", onChange);
+  }, []);
 
   useEffect(() => {
     const token = storageGet("smartFarmToken");
@@ -52,7 +76,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  const value = useMemo(() => ({ user, loading, login, signup, logout }), [user, loading]);
+  async function updateProfile(payload) {
+    const { data } = await api.put("/auth/me", payload);
+    storageSet("smartFarmUser", JSON.stringify(data.user));
+    setUser(data.user);
+    applyTheme(data.user?.preferences?.theme);
+    return data.user;
+  }
+
+  const value = useMemo(() => ({ user, loading, login, signup, logout, updateProfile, applyTheme }), [user, loading]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

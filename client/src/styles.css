@@ -6,6 +6,10 @@
   color-scheme: light;
 }
 
+:root.dark {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   background:
@@ -16,12 +20,26 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+:root.dark body {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(228, 232, 207, 0.12) 1px, transparent 0),
+    #07150f;
+  background-size: 20px 20px;
+  color: #f7f8f2;
+}
+
 @layer components {
   .card {
     border: 1px solid #ebedd9;
     border-radius: 0.5rem;
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 12px 30px rgba(8, 37, 26, 0.08);
+  }
+
+  :root.dark .card {
+    border-color: rgba(223, 227, 196, 0.18);
+    background: rgba(8, 37, 26, 0.94);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
   }
 
   .btn {
@@ -46,6 +64,12 @@ body {
     color: #003522;
   }
 
+  :root.dark .btn-muted {
+    border-color: rgba(223, 227, 196, 0.18);
+    background: rgba(8, 37, 26, 0.94);
+    color: #f7f8f2;
+  }
+
   .btn-muted:hover {
     background: #f7f8f2;
   }
@@ -54,6 +78,12 @@ body {
     @apply w-full rounded-md bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400;
     border: 1px solid #ebedd9;
     color: #08251a;
+  }
+
+  :root.dark .input {
+    border-color: rgba(223, 227, 196, 0.2);
+    background: rgba(3, 53, 34, 0.72);
+    color: #f7f8f2;
   }
 
   .input:focus {

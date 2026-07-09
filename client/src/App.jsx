@@ -16,6 +16,7 @@ import More from "./pages/More";
 import Reports from "./pages/Reports";
 import ResetPassword from "./pages/ResetPassword";
 import Scanner from "./pages/Scanner";
+import Settings from "./pages/Settings";
 import SmartAssistant from "./pages/SmartAssistant";
 import Vaccinations from "./pages/Vaccinations";
 import Weather from "./pages/Weather";
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="weather" element={<Weather />} />
         <Route path="scan" element={<Scanner />} />
         <Route path="scan/:qrCodeId" element={<Scanner />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
