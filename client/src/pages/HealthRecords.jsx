@@ -8,6 +8,7 @@ import ExportButtons from "../components/ExportButtons";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
+import { createMedicationRow, healthMedicationSummary, isNonNegativeNumber, recordForHealthForm } from "../utils/healthRecords";
 
 const emptyRecord = {
   animal: "",
@@ -15,13 +16,10 @@ const emptyRecord = {
   condition: "",
   symptoms: "",
   diagnosis: "",
-  treatment: "",
-  medication: "",
-  dosage: "",
+  medications: [createMedicationRow()],
   vetName: "",
   serviceType: "Vet consultation",
   serviceCharge: "",
-  medicineCost: "",
   transportCost: "",
   otherCost: "",
   paymentMethod: "Mpesa",
@@ -75,15 +73,15 @@ export default function HealthRecords() {
           { key: "recordDate", label: "Date", render: (row) => formatDate(row.recordDate) },
           { key: "animal", label: "Animal", render: (row) => `${row.animal?.animalId || "Unknown"} ${row.animal?.name ? `- ${row.animal.name}` : ""}` },
           { key: "condition", label: "Condition" },
-          { key: "treatment", label: "Treatment" },
-          { key: "medication", label: "Medication" },
+          { key: "diagnosis", label: "Diagnosis" },
+          { key: "medications", label: "Medication", render: (row) => healthMedicationSummary(row) || "None" },
           { key: "vetName", label: "Vet", render: (row) => row.vetName || "Not set" },
           { key: "totalCost", label: "Cost", render: (row) => currency.format(row.totalCost || 0) },
           { key: "recoveryStatus", label: "Status", render: (row) => <Status value={row.recoveryStatus} /> }
         ]}
         actions={(row) => (
           <div className="flex justify-end gap-2">
-            <button className="btn-muted px-2" onClick={() => setEditing({ ...row, animal: row.animal?._id, recordDate: inputDate(row.recordDate), followUpDate: inputDate(row.followUpDate) })} aria-label="Edit health record"><Edit className="h-4 w-4" /></button>
+            <button className="btn-muted px-2" onClick={() => setEditing(recordForHealthForm(row))} aria-label="Edit health record"><Edit className="h-4 w-4" /></button>
             <button className="btn-muted px-2 text-red-700" onClick={() => remove(row._id)} aria-label="Delete health record"><Trash2 className="h-4 w-4" /></button>
           </div>
         )}
@@ -94,13 +92,46 @@ export default function HealthRecords() {
 }
 
 function HealthModal({ record, animals, onClose, onSaved }) {
-  const [form, setForm] = useState(record);
+  const [form, setForm] = useState(() => recordForHealthForm(record));
   const isEdit = Boolean(record._id);
-  const totalCost = Number(form.serviceCharge || 0) + Number(form.medicineCost || 0) + Number(form.transportCost || 0) + Number(form.otherCost || 0);
+  const medicineTotal = (form.medications || []).reduce((sum, item) => sum + Number(item.medicineCharge || 0), 0);
+  const totalCost = Number(form.serviceCharge || 0) + medicineTotal + Number(form.transportCost || 0) + Number(form.otherCost || 0);
+
+  function updateMedication(index, field, value) {
+    setForm((current) => ({
+      ...current,
+      medications: current.medications.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item)
+    }));
+  }
+
+  function addMedication() {
+    setForm((current) => ({ ...current, medications: [...current.medications, createMedicationRow()] }));
+  }
+
+  function removeMedication(index) {
+    setForm((current) => ({ ...current, medications: current.medications.filter((_, itemIndex) => itemIndex !== index) }));
+  }
 
   async function submit(event) {
     event.preventDefault();
-    const payload = { ...form, animal: form.animal || animals[0]?._id, totalCost };
+    const diagnosis = form.diagnosis?.trim();
+    if (!diagnosis) return toast.error("Diagnosis is required");
+
+    const medications = form.medications
+      .filter((item) => item.medicationName?.trim() || item.dosage?.trim() || String(item.medicineCharge ?? "").trim())
+      .map((item) => ({
+        medicationName: item.medicationName?.trim(),
+        dosage: item.dosage?.trim(),
+        medicineCharge: Number(item.medicineCharge || 0)
+      }));
+    if (medications.some((item) => !item.medicationName)) return toast.error("Medication name is required for each medication");
+    if (medications.some((item) => !item.dosage)) return toast.error("Dosage is required for each medication");
+    if (medications.some((item) => !Number.isFinite(item.medicineCharge) || item.medicineCharge < 0)) return toast.error("Medicine charge must be a valid non-negative number");
+    if (!isNonNegativeNumber(form.serviceCharge)) return toast.error("Service charge must be a valid non-negative number");
+    if (form.followUpDate && Number.isNaN(Date.parse(form.followUpDate))) return toast.error("Follow-up date must be valid");
+
+    const { treatment, medication, dosage, medicineCost, ...cleanForm } = form;
+    const payload = { ...cleanForm, diagnosis, medications, animal: form.animal || animals[0]?._id, totalCost };
     if (!payload.animal) return toast.error("Add an animal before creating health records");
     if (isEdit) await api.put(`/health-records/${record._id}`, payload);
     else await api.post("/health-records", payload);
@@ -120,18 +151,53 @@ function HealthModal({ record, animals, onClose, onSaved }) {
             {serviceTypes.map((item) => <option key={item}>{item}</option>)}
           </select>
         </label>
-        <Field label="Vet name" value={form.vetName || ""} onChange={(value) => setForm({ ...form, vetName: value })} />
         <TextArea label="Symptoms" value={form.symptoms || ""} onChange={(value) => setForm({ ...form, symptoms: value })} />
-        <TextArea label="Diagnosis" value={form.diagnosis || ""} onChange={(value) => setForm({ ...form, diagnosis: value })} />
-        <TextArea label="Treatment given" value={form.treatment || ""} onChange={(value) => setForm({ ...form, treatment: value })} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Medication" value={form.medication || ""} onChange={(value) => setForm({ ...form, medication: value })} />
-          <Field label="Dosage" value={form.dosage || ""} onChange={(value) => setForm({ ...form, dosage: value })} />
-        </div>
-        <Field label="Service charge" type="number" value={form.serviceCharge || ""} onChange={(value) => setForm({ ...form, serviceCharge: value })} />
-        <Field label="Medicine cost" type="number" value={form.medicineCost || ""} onChange={(value) => setForm({ ...form, medicineCost: value })} />
-        <Field label="Transport cost" type="number" value={form.transportCost || ""} onChange={(value) => setForm({ ...form, transportCost: value })} />
-        <Field label="Other cost" type="number" value={form.otherCost || ""} onChange={(value) => setForm({ ...form, otherCost: value })} />
+        <section className="space-y-3 rounded-lg border border-farm-100 bg-white p-4 sm:col-span-2">
+          <div>
+            <h3 className="font-bold text-farm-950">Diagnosis</h3>
+            <p className="text-sm text-slate-500">Record the confirmed or suspected diagnosis.</p>
+          </div>
+          <TextArea label="Diagnosis" value={form.diagnosis || ""} onChange={(value) => setForm({ ...form, diagnosis: value })} required />
+        </section>
+
+        <section className="space-y-4 rounded-lg border border-farm-100 bg-white p-4 sm:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-farm-950">Medication</h3>
+              <p className="text-sm text-slate-500">Add each medicine, its dosage, and charge separately.</p>
+            </div>
+            <button type="button" className="btn-muted" onClick={addMedication}><Plus className="h-4 w-4" /> Add medication</button>
+          </div>
+          <div className="space-y-3">
+            {form.medications.map((item, index) => (
+              <div key={index} className="rounded-lg bg-field-cream p-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,.8fr)_2.5rem] lg:items-end">
+                  <Field label="Medication name" value={item.medicationName} onChange={(value) => updateMedication(index, "medicationName", value)} />
+                  <Field label="Dosage" value={item.dosage} onChange={(value) => updateMedication(index, "dosage", value)} />
+                  <Field label="Medicine charge" type="number" min="0" step="0.01" value={item.medicineCharge} onChange={(value) => updateMedication(index, "medicineCharge", value)} />
+                  {form.medications.length > 1 && (
+                    <button type="button" className="btn-muted h-10 px-2 text-red-700" onClick={() => removeMedication(index)} aria-label={`Remove medication ${index + 1}`} title="Remove medication">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-sm font-semibold text-slate-600">Medicine total: {currency.format(medicineTotal)}</div>
+        </section>
+
+        <section className="grid gap-4 rounded-lg border border-farm-100 bg-white p-4 sm:col-span-2 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <h3 className="font-bold text-farm-950">Veterinary Service</h3>
+            <p className="text-sm text-slate-500">Record the provider and professional service charge.</p>
+          </div>
+          <Field label="Vet name" value={form.vetName || ""} onChange={(value) => setForm({ ...form, vetName: value })} />
+          <Field label="Service charge" type="number" min="0" step="0.01" value={form.serviceCharge || ""} onChange={(value) => setForm({ ...form, serviceCharge: value })} />
+        </section>
+
+        <Field label="Transport cost" type="number" min="0" step="0.01" value={form.transportCost || ""} onChange={(value) => setForm({ ...form, transportCost: value })} />
+        <Field label="Other cost" type="number" min="0" step="0.01" value={form.otherCost || ""} onChange={(value) => setForm({ ...form, otherCost: value })} />
         <label className="space-y-1">
           <span className="label">Payment method</span>
           <select className="input" value={form.paymentMethod || "Mpesa"} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })}>
@@ -146,7 +212,7 @@ function HealthModal({ record, animals, onClose, onSaved }) {
           </select>
         </label>
         <div className="rounded-lg bg-field-cream p-3 text-sm font-semibold text-slate-600 sm:col-span-2">
-          Service + Medicine + Transport + Other = {currency.format(totalCost)}
+          Veterinary service + all medicines + transport + other = {currency.format(totalCost)}
         </div>
         <TextArea label="Notes" value={form.notes || ""} onChange={(value) => setForm({ ...form, notes: value })} />
         {isEdit && <div className="sm:col-span-2"><DocumentManager entityType="health" entityId={record._id} /></div>}
@@ -168,10 +234,10 @@ function AnimalSelect({ animals, value, onChange }) {
   return <label className="space-y-1"><span className="label">Animal</span><select className="input" value={value || ""} onChange={(event) => onChange(event.target.value)} required><option value="">Select animal</option>{animals.map((animal) => <option key={animal._id} value={animal._id}>{animal.animalId} - {animal.name || animal.species}</option>)}</select></label>;
 }
 
-function Field({ label, value, onChange, type = "text", required }) {
-  return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
+function Field({ label, value, onChange, type = "text", required, min, step }) {
+  return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} min={min} step={step} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
 }
 
-function TextArea({ label, value, onChange }) {
-  return <label className="space-y-1 sm:col-span-2"><span className="label">{label}</span><textarea className="input min-h-20" value={value ?? ""} onChange={(event) => onChange(event.target.value)} /></label>;
+function TextArea({ label, value, onChange, required }) {
+  return <label className="space-y-1 sm:col-span-2"><span className="label">{label}</span><textarea className="input min-h-20" value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
 }

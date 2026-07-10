@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 
+const medicationSchema = new mongoose.Schema(
+  {
+    medicationName: { type: String, required: true, trim: true },
+    dosage: { type: String, required: true, trim: true },
+    medicineCharge: { type: Number, min: 0, default: 0 }
+  },
+  { _id: false }
+);
+
 const healthRecordSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -7,7 +16,10 @@ const healthRecordSchema = new mongoose.Schema(
     recordDate: { type: Date, required: true, default: Date.now },
     condition: { type: String, required: true, trim: true },
     symptoms: { type: String, trim: true },
+    // API validation requires diagnosis on new saves; optional storage keeps legacy backups importable.
     diagnosis: { type: String, trim: true },
+    medications: { type: [medicationSchema], default: [] },
+    // Legacy fields remain readable so existing records do not require a destructive migration.
     treatment: { type: String, trim: true },
     medication: { type: String, trim: true },
     dosage: { type: String, trim: true },

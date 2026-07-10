@@ -8,6 +8,7 @@ import DocumentManager from "../components/DocumentManager";
 import api from "../services/api";
 import { currency, formatDate } from "../utils";
 import { downloadIndividual } from "../utils/downloads";
+import { healthMedicationSummary } from "../utils/healthRecords";
 
 export default function AnimalProfile() {
   const { id } = useParams();
@@ -196,8 +197,7 @@ export default function AnimalProfile() {
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                   <HistoryLine label="Symptoms" value={record.symptoms} />
                   <HistoryLine label="Diagnosis" value={record.diagnosis} />
-                  <HistoryLine label="Treatment" value={record.treatment} />
-                  <HistoryLine label="Medication" value={[record.medication, record.dosage].filter(Boolean).join(" - ")} />
+                  <HistoryLine label="Medication" value={healthMedicationSummary(record)} />
                   <HistoryLine label="Cost" value={currency.format(record.totalCost || 0)} />
                   <HistoryLine label="Follow-up" value={formatDate(record.followUpDate)} />
                 </div>

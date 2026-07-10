@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
+import { validationResult } from "express-validator";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import { createResetToken, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
+import { buildHealthPayload, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
+
+async function healthValidationErrors(body) {
+  const request = { body };
+  await Promise.all(healthRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
 
 const originalEnv = { ...process.env };
 
@@ -12,6 +20,44 @@ try {
   assert.equal(reset.token.length, 64, "raw reset token should be 32 random bytes encoded as hex");
   assert.equal(reset.tokenHash, hashResetToken(reset.token), "stored reset hash should match raw token hash");
   assert.notEqual(reset.token, reset.tokenHash, "raw reset tokens must not be stored directly");
+
+  const healthPayload = buildHealthPayload({
+    serviceCharge: 500,
+    transportCost: 100,
+    otherCost: 50,
+    medications: [
+      { medicationName: "Medicine A", dosage: "5 ml", medicineCharge: 200 },
+      { medicationName: "Medicine B", dosage: "1 tablet", medicineCharge: 150 }
+    ]
+  });
+  assert.equal(healthPayload.medicineCost, 350, "medicine cost should include every medication entry");
+  assert.equal(healthPayload.totalCost, 1000, "health total should include service, medicine, transport, and other costs");
+  assert.deepEqual(
+    normalizeHealthMedications({ medication: "Legacy medicine", dosage: "2 ml", medicineCost: 75 }),
+    [{ medicationName: "Legacy medicine", dosage: "2 ml", medicineCharge: 75 }],
+    "legacy medication fields should map to the medication array"
+  );
+  const validHealthErrors = await healthValidationErrors({
+    animal: "507f1f77bcf86cd799439011",
+    condition: "Respiratory infection",
+    diagnosis: "Bacterial infection",
+    medications: [{ medicationName: "Medicine A", dosage: "5 ml", medicineCharge: 100 }],
+    serviceCharge: 200,
+    followUpDate: "2026-07-20"
+  });
+  assert.equal(validHealthErrors.length, 0, "a valid health record should pass server validation");
+  const invalidHealthErrors = await healthValidationErrors({
+    animal: "507f1f77bcf86cd799439011",
+    condition: "Respiratory infection",
+    diagnosis: "",
+    medications: [{ medicationName: "", dosage: "", medicineCharge: -1 }],
+    serviceCharge: "not-a-number",
+    followUpDate: "not-a-date"
+  });
+  assert.equal(invalidHealthErrors.some((error) => error.path === "diagnosis"), true, "diagnosis must be required");
+  assert.equal(invalidHealthErrors.some((error) => error.path === "medications[0].medicineCharge"), true, "medicine charges must be non-negative numbers");
+  assert.equal(invalidHealthErrors.some((error) => error.path === "serviceCharge"), true, "service charges must be numeric");
+  assert.equal(invalidHealthErrors.some((error) => error.path === "followUpDate"), true, "follow-up dates must be valid");
 
   process.env.NODE_ENV = "production";
   process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";

@@ -7,21 +7,50 @@ export const healthRules = [
   body("animal").isMongoId().withMessage("Animal is required"),
   body("recordDate").optional({ values: "falsy" }).isISO8601().toDate(),
   body("condition").trim().notEmpty().withMessage("Condition or disease is required"),
+  body("diagnosis").trim().notEmpty().withMessage("Diagnosis is required").isLength({ max: 2000 }),
+  body("medications").optional().isArray({ max: 25 }).withMessage("Medications must be a list of up to 25 entries"),
+  body("medications.*.medicationName").trim().notEmpty().withMessage("Medication name is required").isLength({ max: 200 }),
+  body("medications.*.dosage").trim().notEmpty().withMessage("Dosage is required").isLength({ max: 200 }),
+  body("medications.*.medicineCharge").isFloat({ min: 0 }).withMessage("Medicine charge must be a valid non-negative number"),
   body("serviceCharge").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("medicineCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("transportCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("otherCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
+  body("followUpDate").optional({ values: "falsy" }).isISO8601().withMessage("Follow-up date must be valid").toDate(),
   body("recoveryStatus").optional().isIn(["Open", "Recovering", "Recovered", "Chronic", "Referred"])
 ];
 
-function payload(body) {
-  const allowed = ["animal", "recordDate", "condition", "symptoms", "diagnosis", "treatment", "medication", "dosage", "vetName", "serviceType", "serviceCharge", "medicineCost", "transportCost", "otherCost", "totalCost", "paymentMethod", "followUpDate", "recoveryStatus", "notes"];
+export function normalizeHealthMedications(body) {
+  if (Array.isArray(body.medications)) {
+    return body.medications
+      .map((item) => ({
+        medicationName: String(item?.medicationName || "").trim(),
+        dosage: String(item?.dosage || "").trim(),
+        medicineCharge: Number(item?.medicineCharge || 0)
+      }))
+      .filter((item) => item.medicationName || item.dosage || item.medicineCharge);
+  }
+
+  if (body.medication || body.dosage || Number(body.medicineCost || 0)) {
+    return [{
+      medicationName: String(body.medication || "").trim(),
+      dosage: String(body.dosage || "").trim(),
+      medicineCharge: Number(body.medicineCost || 0)
+    }];
+  }
+
+  return [];
+}
+
+export function buildHealthPayload(body) {
+  const allowed = ["animal", "recordDate", "condition", "symptoms", "diagnosis", "vetName", "serviceType", "serviceCharge", "transportCost", "otherCost", "paymentMethod", "followUpDate", "recoveryStatus", "notes"];
   const out = allowed.reduce((acc, key) => {
     if (body[key] !== undefined) acc[key] = body[key];
     return acc;
   }, {});
+  out.medications = normalizeHealthMedications(body);
   out.serviceCharge = Number(out.serviceCharge || 0);
-  out.medicineCost = Number(out.medicineCost || 0);
+  out.medicineCost = out.medications.reduce((sum, item) => sum + Number(item.medicineCharge || 0), 0);
   out.transportCost = Number(out.transportCost || 0);
   out.otherCost = Number(out.otherCost || 0);
   out.totalCost = out.serviceCharge + out.medicineCost + out.transportCost + out.otherCost;
@@ -92,7 +121,7 @@ export async function createHealthRecord(req, res, next) {
     const animal = await assertAnimal(req.user._id, req.body.animal);
     if (!animal) return res.status(404).json({ message: "Animal not found" });
 
-    const record = await HealthRecord.create({ ...payload(req.body), user: req.user._id });
+    const record = await HealthRecord.create({ ...buildHealthPayload(req.body), user: req.user._id });
     if (record.recoveryStatus !== "Recovered" && animal.status !== "Sick") {
       animal.status = "Sick";
       await animal.save();
@@ -109,7 +138,7 @@ export async function updateHealthRecord(req, res, next) {
     if (req.body.animal && !(await assertAnimal(req.user._id, req.body.animal))) {
       return res.status(404).json({ message: "Animal not found" });
     }
-    const record = await HealthRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, payload(req.body), {
+    const record = await HealthRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, buildHealthPayload(req.body), {
       new: true,
       runValidators: true
     }).populate("animal", "animalId name species status");

@@ -44,6 +44,28 @@ function fmt(value) {
   return String(value);
 }
 
+function healthMedications(record) {
+  if (Array.isArray(record.medications) && record.medications.length) return record.medications;
+  if (record.medication || record.dosage || Number(record.medicineCost || 0)) {
+    return [{ medicationName: record.medication || "", dosage: record.dosage || "", medicineCharge: Number(record.medicineCost || 0) }];
+  }
+  return [];
+}
+
+function medicationNames(record) {
+  return healthMedications(record).map((item) => item.medicationName).filter(Boolean).join("; ");
+}
+
+function medicationDosages(record) {
+  return healthMedications(record).map((item) => item.dosage).filter(Boolean).join("; ");
+}
+
+function medicationDetails(record) {
+  return healthMedications(record)
+    .map((item) => `${item.medicationName || "Medicine"}${item.dosage ? ` (${item.dosage})` : ""}: ${Number(item.medicineCharge || 0)}`)
+    .join("; ");
+}
+
 function csvEscape(value) {
   const text = safeSpreadsheetText(value);
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -224,7 +246,7 @@ export async function getReportRows(user, type, filters = {}) {
   }
   if (type === "health") {
     const rows = await HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).lean();
-    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Date: r.recordDate, Condition: r.condition, ServiceType: r.serviceType, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Treatment: r.treatment, Medication: r.medication, Dosage: r.dosage, Vet: r.vetName, ServiceCharge: r.serviceCharge, MedicineCost: r.medicineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, FollowUpDate: r.followUpDate, Status: r.recoveryStatus, Notes: r.notes }));
+    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Date: r.recordDate, Condition: r.condition, ServiceType: r.serviceType, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Medication: medicationNames(r), Dosage: medicationDosages(r), MedicationDetails: medicationDetails(r), Vet: r.vetName, ServiceCharge: r.serviceCharge, MedicineCost: r.medicineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, FollowUpDate: r.followUpDate, Status: r.recoveryStatus, Notes: r.notes }));
   }
   if (type === "vet") return getReportRows(user, "health", filters);
   if (type === "vaccinations") {
@@ -373,7 +395,7 @@ function individualAnimalRows(data) {
     { Section: "Family", Field: "Father", Value: animal.father ? `${animal.father.animalId} - ${animal.father.name || ""}` : "" },
     { Section: "Family", Field: "Children", Value: (animal.children || []).map((child) => `${child.animalId} - ${child.name || ""}`).join("; ") },
     { Section: "QR", Field: "QR code", Value: animal.qrCodeValue },
-    ...health.map((r) => ({ Section: "Health", Date: r.recordDate, Field: r.condition, Treatment: r.treatment, Medication: r.medication, Vet: r.vetName, TotalCost: r.totalCost, Notes: r.notes })),
+    ...health.map((r) => ({ Section: "Health", Date: r.recordDate, Field: r.condition, Diagnosis: r.diagnosis, Medication: medicationDetails(r), Vet: r.vetName, TotalCost: r.totalCost, Notes: r.notes })),
     ...vaccinations.map((r) => ({ Section: "Vaccination", Date: r.dateGiven, Field: r.vaccineName, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, TotalCost: r.totalCost, Notes: r.notes })),
     ...breeding.map((r) => ({ Section: "Breeding", Date: r.matingDate, Field: `${r.femaleAnimal?.animalId} x ${r.maleAnimal?.animalId}`, Status: r.pregnancyStatus, Result: r.breedingResult, Notes: r.notes })),
     ...births.map((r) => ({ Section: "Birth", Date: r.birthDate, Field: `Offspring ${(r.offspring || []).map((a) => a.animalId).join(", ")}`, Mother: r.mother?.animalId, Father: r.father?.animalId, Notes: r.notes })),
@@ -439,7 +461,7 @@ async function sendIndividualAnimalPdf(res, data) {
   });
 
   section(doc, "Health History");
-  health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.recoveryStatus} - ${r.treatment || ""}`)) : bullet(doc, "Records", "None");
+  health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.recoveryStatus} - ${r.diagnosis || "Diagnosis not recorded"} - ${medicationDetails(r) || "No medication"}`)) : bullet(doc, "Records", "None");
 
   section(doc, "Vaccination History");
   vaccinations.length ? vaccinations.forEach((r) => bullet(doc, r.vaccineName, `${r.status} - next due ${fmt(r.nextDueDate)} - batch ${r.batchNumber || ""}`)) : bullet(doc, "Records", "None");
