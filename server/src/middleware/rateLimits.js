@@ -44,3 +44,28 @@ export const sensitiveApiLimiter = rateLimit({
   legacyHeaders: false,
   handler: standardHandler
 });
+
+export const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: standardHandler
+});
+
+export const adminApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: standardHandler
+});
+
+export const analyticsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: standardHandler
+});

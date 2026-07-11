@@ -1,4 +1,4 @@
-import { Bell, Bot, CloudSun, QrCode, ReceiptText, Settings } from "lucide-react";
+import { Bell, Bot, CloudSun, MessageSquareWarning, QrCode, ReceiptText, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 
@@ -8,7 +8,8 @@ const moreItems = [
   { to: "/scan", label: "Scan QR", description: "Open animal profiles by QR", icon: QrCode },
   { to: "/weather", label: "Weather", description: "Daily farm conditions", icon: CloudSun },
   { to: "/finance", label: "Finance", description: "Income, costs, stock and savings", icon: ReceiptText },
-  { to: "/settings", label: "Profile & Settings", description: "Farm profile, theme and preferences", icon: Settings }
+  { to: "/settings", label: "Profile & Settings", description: "Farm profile, theme and preferences", icon: Settings },
+  { to: "/feedback", label: "Report or Suggest", description: "Report a problem or request a feature", icon: MessageSquareWarning }
 ];
 
 export default function More() {

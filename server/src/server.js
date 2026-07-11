@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { connectDB } from "./config/db.js";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import animalRoutes from "./routes/animalRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -13,13 +14,16 @@ import breedingRoutes from "./routes/breedingRoutes.js";
 import cropRoutes from "./routes/cropRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
+import feedbackRoutes from "./routes/feedbackRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
+import usageRoutes from "./routes/usageRoutes.js";
 import vaccinationRoutes from "./routes/vaccinationRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 import { globalLimiter } from "./middleware/rateLimits.js";
+import { auditImportantDeletion } from "./middleware/audit.js";
 
 dotenv.config();
 validateEnv();
@@ -45,9 +49,13 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
   skip: (req) => req.path === "/api/health"
 }));
 app.use(globalLimiter);
+app.use(auditImportantDeletion);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", service: "Smart Farm AI API" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/usage", usageRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/documents", documentRoutes);

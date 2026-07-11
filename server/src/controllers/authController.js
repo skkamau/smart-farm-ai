@@ -33,11 +33,13 @@ function tooSoon(key) {
   return entry && Date.now() - entry.lastAt < resetCooldownMs && entry.count > 1;
 }
 
-const publicUser = (user) => ({
+export const publicUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
   farmName: user.farmName,
+  role: user.role || "user",
+  accountStatus: user.accountStatus || "active",
   farmLocation: user.farmLocation || "",
   farmType: user.farmType || "mixed",
   mainActivities: user.mainActivities || "",
@@ -112,10 +114,18 @@ export async function register(req, res, next) {
 export async function login(req, res, next) {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    if (user.accountStatus === "suspended") {
+      return res.status(403).json({ message: "Account suspended. Contact support for assistance." });
+    }
+
+    user.lastLoginAt = new Date();
+    user.lastActiveAt = user.lastLoginAt;
+    await user.save();
 
     res.json({ user: publicUser(user), token: signToken(user._id, user.sessionVersion) });
   } catch (error) {

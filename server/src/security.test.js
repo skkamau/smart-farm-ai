@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { validationResult } from "express-validator";
+import jwt from "jsonwebtoken";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
+import { publicUser } from "./controllers/authController.js";
 import { createResetToken, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
 import { buildHealthPayload, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
+import User from "./models/User.js";
+import { requireRole } from "./middleware/auth.js";
+import { signAdminToken, signToken } from "./utils/tokens.js";
+import { sanitizeAuditMetadata } from "./services/auditService.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -65,6 +71,30 @@ try {
   assert.throws(() => validateEnv(), /JWT_SECRET/, "short production JWT secrets must be rejected");
 
   process.env.JWT_SECRET = "a".repeat(32);
+  const appToken = signToken("507f1f77bcf86cd799439011", 3);
+  const appClaims = jwt.verify(appToken, process.env.JWT_SECRET);
+  assert.equal(appClaims.purpose, "app", "normal sessions must be marked as app sessions");
+  const adminToken = signAdminToken("507f1f77bcf86cd799439011", 4);
+  const adminClaims = jwt.verify(adminToken, process.env.JWT_SECRET, { audience: "smart-farm-admin", issuer: "smart-farm-api" });
+  assert.equal(adminClaims.purpose, "admin", "admin sessions must use a distinct purpose");
+  assert.throws(() => jwt.verify(appToken, process.env.JWT_SECRET, { audience: "smart-farm-admin" }), "normal app tokens must not satisfy the admin audience");
+
+  assert.equal(User.schema.path("password").options.select, false, "password hashes must be excluded from queries by default");
+  assert.deepEqual(User.schema.path("role").enumValues, ["user", "admin", "super_admin"], "user roles must be constrained by the schema");
+  assert.deepEqual(User.schema.path("accountStatus").enumValues, ["active", "suspended"], "account status must be constrained by the schema");
+  const exposedUser = publicUser({ _id: "user-id", name: "Owner", email: "owner@example.test", password: "hash", role: "user", accountStatus: "active", farmName: "Farm" });
+  assert.equal(Object.hasOwn(exposedUser, "password"), false, "public user responses must not expose password hashes");
+  assert.equal(exposedUser.role, "user", "public user responses should expose only the safe role value");
+
+  let roleNextCalled = false;
+  requireRole("super_admin")({ admin: { role: "super_admin" } }, {}, () => { roleNextCalled = true; });
+  assert.equal(roleNextCalled, true, "super-admin role guard should allow super-admins");
+  let deniedStatus = 0;
+  requireRole("super_admin")({ admin: { role: "admin" } }, { status(code) { deniedStatus = code; return this; }, json() {} }, () => {});
+  assert.equal(deniedStatus, 403, "admin role guard must deny ordinary admins");
+  const redactedAuditData = sanitizeAuditMetadata({ reason: "test", nested: { token: "secret-token", detail: "safe" }, passwordHash: "secret-hash" });
+  assert.deepEqual(redactedAuditData, { reason: "test", nested: { detail: "safe" } }, "audit metadata must redact sensitive keys recursively");
+
   process.env.CLIENT_URL = "https://smart-farm-ai-two.vercel.app";
   process.env.ALLOWED_ORIGINS = "";
   assert.doesNotThrow(() => validateEnv(), "valid production env should pass");

@@ -1,6 +1,8 @@
 import { BarChart3, Beef, HeartPulse, Leaf, LogOut, Menu, Settings, Sprout } from "lucide-react";
+import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 const bottomNav = [
   { to: "/", label: "Dashboard", icon: BarChart3, match: (path) => path === "/" },
@@ -16,13 +18,21 @@ const bottomNav = [
     to: "/more",
     label: "More",
     icon: Menu,
-    match: (path) => ["/more", "/assistant", "/alerts", "/scan", "/weather", "/finance", "/settings"].some((item) => path.startsWith(item))
+    match: (path) => ["/more", "/assistant", "/alerts", "/scan", "/weather", "/finance", "/settings", "/feedback"].some((item) => path.startsWith(item))
   }
 ];
 
 export default function Layout() {
   const { logout, user } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    const feature = featureForPath(location.pathname);
+    if (!feature) return;
+    const key = `smartFarmUsage:${new Date().toISOString().slice(0, 10)}:${feature}`;
+    if (sessionStorage.getItem(key)) return;
+    api.post("/usage", { feature }).then(() => sessionStorage.setItem(key, "1")).catch(() => {});
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen">
@@ -67,4 +77,16 @@ export default function Layout() {
       </nav>
     </div>
   );
+}
+
+function featureForPath(path) {
+  if (path === "/") return "dashboard";
+  const matches = [
+    ["/animals", "animals"], ["/health", "health"], ["/vaccinations", "vaccinations"],
+    ["/breeding", "breeding"], ["/births", "births"], ["/crops", "crops"],
+    ["/finance", "finance"], ["/reports", "reports"], ["/assistant", "assistant"],
+    ["/alerts", "alerts"], ["/scan", "scanner"], ["/weather", "weather"],
+    ["/settings", "settings"], ["/feedback", "feedback"]
+  ];
+  return matches.find(([prefix]) => path.startsWith(prefix))?.[1] || null;
 }

@@ -3,7 +3,7 @@ import { storageGet } from "../utils/storage";
 
 const productionApiUrl = "https://smart-farm-ai-api.onrender.com/api";
 
-function resolveApiBaseUrl() {
+export function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_URL;
   if (configured && configured !== "auto") return configured;
 
@@ -26,5 +26,17 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403 && String(error.response?.data?.message || "").startsWith("Account suspended")) {
+      storageRemove("smartFarmToken");
+      storageRemove("smartFarmUser");
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) window.location.assign("/login?status=suspended");
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

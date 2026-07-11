@@ -184,3 +184,16 @@ These issues were fixed directly in code. The app now has stricter environment v
 4. Replace or isolate `exceljs` to remove the remaining `uuid` audit warning.
 5. Plan a follow-up auth hardening phase to move tokens from local storage to HttpOnly cookies.
 6. Run a live production smoke test after deploying these changes.
+
+## Admin System Addendum - 2026-07-11
+
+The owner admin console adds server-enforced roles (`user`, `admin`, `super_admin`), account suspension, short-lived admin-specific JWTs, admin-login rate limiting, user/report management, privacy-friendly analytics, CSV exports, and application-level audit events. Normal app tokens do not satisfy the admin token audience or purpose, and only `super_admin` can grant or remove the `admin` role.
+
+Additional safeguards include default password-hash exclusion, session revocation after suspension or role changes, recursive audit metadata redaction, allowlisted analytics features with 180-day TTL retention, and image-only report screenshots with file, field, and part limits.
+
+Remaining admin risks:
+
+- Admin bearer tokens are kept in browser session storage and remain exposed if a same-origin XSS vulnerability is introduced. A future release should consider secure, HttpOnly, SameSite cookies with CSRF protection.
+- Multi-factor authentication is not yet available for admin accounts. Add MFA before supporting a larger operations team or highly sensitive deployments.
+- Screenshot and document uploads use local disk storage. Render's ephemeral filesystem can discard files after restarts; private object storage with signed downloads is recommended.
+- Audit logs are application-level records in the primary database. High-assurance deployments should forward them to append-only external log storage with alerting.

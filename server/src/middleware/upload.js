@@ -39,3 +39,20 @@ export const upload = multer({
     cb(null, true);
   }
 });
+
+const bugScreenshotTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const bugScreenshotExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+
+export const bugScreenshotUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 3, parts: 4, fieldSize: 10 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!bugScreenshotTypes.has(file.mimetype) || !bugScreenshotExtensions.has(extension)) {
+      const error = new Error("Screenshot must be a JPG, PNG, or WEBP image");
+      error.statusCode = 400;
+      return cb(error);
+    }
+    cb(null, true);
+  }
+});

@@ -173,7 +173,7 @@ Phase 3 adds two protected record modules:
 
 Use the sidebar on desktop, or mobile menu, to open each module.
 
-Health records include animal, date, condition/disease, symptoms, diagnosis, treatment, medication, dosage, vet name, recovery status, and notes.
+Health records include animal, date, condition/disease, symptoms, diagnosis, multiple medications with dosage and charge, vet name, service charge, recovery status, and notes.
 
 Vaccination records include animal, vaccine name, date given, next due date, vet name, batch number, status, and notes.
 
@@ -321,6 +321,68 @@ Crop, vet/health, and vaccination costs can now be linked to real farm records:
 - Vaccination costs are entered from Vaccinations and synced to Finance.
 - Finance can filter by crop, animal, category, payment method, and date.
 - Animal profiles show total health cost, vaccination cost, recent treatments, and follow-up reminders.
+
+## Secure Admin Console
+
+The admin console is separate from the farm workspace:
+
+```text
+/admin/login
+/admin/dashboard
+/admin/users
+/admin/reports
+/admin/analytics
+/admin/logs
+```
+
+Admin API routes use a short-lived admin-specific JWT and server-side role checks. A normal app token cannot access admin APIs. Supported roles are `user`, `admin`, and `super_admin`.
+
+Admin capabilities include:
+
+- account summaries and recent registrations
+- searchable user and farm record counts
+- user suspension and reactivation
+- super-admin-only promotion to `admin`
+- bug report and suggestion review
+- privacy-friendly usage analytics
+- security activity logs
+- CSV exports for users, farms, reports, and analytics
+
+Normal users can submit reports from `More > Report or Suggest`. Screenshot uploads support JPG, PNG, and WEBP files up to 5 MB.
+
+### Create The First Super-Admin
+
+1. Register the intended owner account through the normal signup page using a strong, unique password.
+2. Open the Render service Shell for `smart-farm-ai-api`.
+3. Run this one-time command, replacing the email with the registered owner account:
+
+```bash
+SUPER_ADMIN_EMAIL="owner@example.com" npm run create-super-admin
+```
+
+For local PowerShell from the project root:
+
+```powershell
+$env:SUPER_ADMIN_EMAIL="owner@example.com"
+npm run create-super-admin --prefix server
+Remove-Item Env:SUPER_ADMIN_EMAIL
+```
+
+The command only promotes an existing account, revokes its existing sessions, and refuses to create a different super-admin if one already exists. Do not store `SUPER_ADMIN_EMAIL` permanently in Render.
+
+Optional admin session configuration:
+
+```text
+ADMIN_JWT_EXPIRES_IN=2h
+```
+
+Existing users require no destructive migration. MongoDB applies `role: user` and `accountStatus: active` defaults for new accounts, while admin queries treat older missing values as those safe defaults.
+
+### Admin Data Retention And Upload Note
+
+Usage events store only the account ID, an allowlisted feature name, and the UTC day. They expire automatically after 180 days. Audit logs never receive passwords, tokens, API keys, cookies, or secret environment values.
+
+Screenshot files currently use the same local `server/uploads` storage as existing farm documents. On an ephemeral hosting filesystem, files can disappear after a restart; production should move uploads to private object storage before relying on long-term screenshot retention.
 
 ## GitHub
 

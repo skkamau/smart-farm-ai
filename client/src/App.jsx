@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
+import AdminLayout from "./components/AdminLayout";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AnimalProfile from "./pages/AnimalProfile";
 import Animals from "./pages/Animals";
@@ -10,6 +12,7 @@ import BreedingRecords from "./pages/BreedingRecords";
 import Crops from "./pages/Crops";
 import Dashboard from "./pages/Dashboard";
 import Finance from "./pages/Finance";
+import Feedback from "./pages/Feedback";
 import ForgotPassword from "./pages/ForgotPassword";
 import HealthRecords from "./pages/HealthRecords";
 import More from "./pages/More";
@@ -20,6 +23,12 @@ import Settings from "./pages/Settings";
 import SmartAssistant from "./pages/SmartAssistant";
 import Vaccinations from "./pages/Vaccinations";
 import Weather from "./pages/Weather";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminLogs from "./pages/admin/AdminLogs";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
@@ -28,6 +37,18 @@ export default function App() {
       <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route
+        path="/admin"
+        element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="reports" element={<AdminReports />} />
+        <Route path="analytics" element={<AdminAnalytics />} />
+        <Route path="logs" element={<AdminLogs />} />
+      </Route>
       <Route
         path="/"
         element={
@@ -53,6 +74,7 @@ export default function App() {
         <Route path="scan" element={<Scanner />} />
         <Route path="scan/:qrCodeId" element={<Scanner />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="feedback" element={<Feedback />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
