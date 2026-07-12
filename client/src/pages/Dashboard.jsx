@@ -152,7 +152,7 @@ function buildDailyReminders(data) {
       icon: Beef,
       priority: "high",
       title: `${totals.sickAnimals} sick animal${totals.sickAnimals === 1 ? "" : "s"}`,
-      detail: vetCase ? `${vetCase.animal?.animalId || "Animal"} - ${vetCase.condition}` : "Review health records and recovery status.",
+      detail: vetCase ? `${vetCase.animal?.animalId || "Animal"} - ${vetCase.condition}` : "Review health records and current animal health status.",
       to: "/health"
     });
   }
