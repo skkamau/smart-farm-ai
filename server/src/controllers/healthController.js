@@ -16,8 +16,7 @@ export const healthRules = [
   body("medicineCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("transportCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("otherCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
-  body("followUpDate").optional({ values: "falsy" }).isISO8601().withMessage("Follow-up date must be valid").toDate(),
-  body("recoveryStatus").optional().isIn(["Open", "Recovering", "Recovered", "Chronic", "Referred"])
+  body("followUpDate").optional({ values: "falsy" }).isISO8601().withMessage("Follow-up date must be valid").toDate()
 ];
 
 export function normalizeHealthMedications(body) {
@@ -43,7 +42,7 @@ export function normalizeHealthMedications(body) {
 }
 
 export function buildHealthPayload(body) {
-  const allowed = ["animal", "recordDate", "condition", "symptoms", "diagnosis", "vetName", "serviceType", "serviceCharge", "transportCost", "otherCost", "paymentMethod", "followUpDate", "recoveryStatus", "notes"];
+  const allowed = ["animal", "recordDate", "condition", "symptoms", "diagnosis", "vetName", "serviceType", "serviceCharge", "transportCost", "otherCost", "paymentMethod", "followUpDate", "notes"];
   const out = allowed.reduce((acc, key) => {
     if (body[key] !== undefined) acc[key] = body[key];
     return acc;
@@ -63,7 +62,7 @@ async function assertAnimal(user, animalId) {
 }
 
 function recordAfterDeath(animal, recordDate) {
-  return animal.status === "Deceased" && animal.dateOfDeath && new Date(recordDate || Date.now()) > new Date(animal.dateOfDeath);
+  return animal.lifecycleStatus === "deceased" && animal.dateOfDeath && new Date(recordDate || Date.now()) > new Date(animal.dateOfDeath);
 }
 
 async function syncHealthFinance(record, animal) {
@@ -113,7 +112,7 @@ export async function listHealthRecords(req, res, next) {
   try {
     const query = { user: req.user._id };
     if (req.query.animal) query.animal = req.query.animal;
-    const records = await HealthRecord.find(query).populate("animal", "animalId name species status").sort({ recordDate: -1 });
+    const records = await HealthRecord.find(query).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus dateOfDeath causeOfDeath customCauseOfDeath").sort({ recordDate: -1 });
     res.json(records);
   } catch (error) {
     next(error);
@@ -127,12 +126,8 @@ export async function createHealthRecord(req, res, next) {
     if (recordAfterDeath(animal, req.body.recordDate)) return res.status(409).json({ message: "Health records cannot be dated after the animal's death" });
 
     const record = await HealthRecord.create({ ...buildHealthPayload(req.body), user: req.user._id });
-    if (record.recoveryStatus !== "Recovered" && animal.status !== "Sick") {
-      animal.status = "Sick";
-      await animal.save();
-    }
     await syncHealthFinance(record, animal);
-    res.status(201).json(await record.populate("animal", "animalId name species status"));
+    res.status(201).json(await record.populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus dateOfDeath causeOfDeath customCauseOfDeath"));
   } catch (error) {
     next(error);
   }
@@ -148,7 +143,7 @@ export async function updateHealthRecord(req, res, next) {
     const record = await HealthRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, buildHealthPayload(req.body), {
       new: true,
       runValidators: true
-    }).populate("animal", "animalId name species status");
+    }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus dateOfDeath causeOfDeath customCauseOfDeath");
     if (!record) return res.status(404).json({ message: "Health record not found" });
     await syncHealthFinance(record, record.animal);
     res.json(record);

@@ -31,7 +31,7 @@ async function linkFamily(user, record) {
   const fatherId = record.father?._id || record.father;
   const offspringIds = offspring.map((animal) => animal?._id || animal);
   await Animal.updateMany({ user, _id: { $in: offspringIds } }, { $set: { mother: motherId, father: fatherId } });
-  await Animal.updateOne({ user, _id: motherId }, { $addToSet: { children: { $each: offspringIds } }, $set: { status: "Healthy" } });
+  await Animal.updateOne({ user, _id: motherId }, { $addToSet: { children: { $each: offspringIds } }, $set: { reproductiveStatus: "postpartum" } });
   await Animal.updateOne({ user, _id: fatherId }, { $addToSet: { children: { $each: offspringIds } } });
 }
 

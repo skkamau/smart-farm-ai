@@ -24,7 +24,6 @@ const emptyRecord = {
   otherCost: "",
   paymentMethod: "Mpesa",
   followUpDate: "",
-  recoveryStatus: "Open",
   notes: ""
 };
 
@@ -50,7 +49,7 @@ export default function HealthRecords() {
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return records.filter((record) => [record.animal?.animalId, record.animal?.name, record.condition, record.vetName, record.recoveryStatus].join(" ").toLowerCase().includes(term));
+    return records.filter((record) => [record.animal?.animalId, record.animal?.name, record.condition, record.vetName, record.animal?.healthStatus, record.animal?.lifecycleStatus].join(" ").toLowerCase().includes(term));
   }, [records, search]);
 
   async function remove(id) {
@@ -77,7 +76,7 @@ export default function HealthRecords() {
           { key: "medications", label: "Medication", render: (row) => healthMedicationSummary(row) || "None" },
           { key: "vetName", label: "Vet", render: (row) => row.vetName || "Not set" },
           { key: "totalCost", label: "Cost", render: (row) => currency.format(row.totalCost || 0) },
-          { key: "recoveryStatus", label: "Status", render: (row) => <Status value={row.recoveryStatus} /> }
+          { key: "healthStatus", label: "Current health", render: (row) => <Status value={row.animal?.lifecycleStatus === "deceased" ? "not_applicable" : row.animal?.healthStatus} /> }
         ]}
         actions={(row) => (
           <div className="flex justify-end gap-2">
@@ -94,6 +93,8 @@ export default function HealthRecords() {
 function HealthModal({ record, animals, onClose, onSaved }) {
   const [form, setForm] = useState(() => recordForHealthForm(record));
   const isEdit = Boolean(record._id);
+  const selectedAnimal = animals.find((animal) => animal._id === form.animal);
+  const [currentHealthStatus, setCurrentHealthStatus] = useState(selectedAnimal?.healthStatus || "unknown");
   const medicineTotal = (form.medications || []).reduce((sum, item) => sum + Number(item.medicineCharge || 0), 0);
   const totalCost = Number(form.serviceCharge || 0) + medicineTotal + Number(form.transportCost || 0) + Number(form.otherCost || 0);
 
@@ -133,6 +134,9 @@ function HealthModal({ record, animals, onClose, onSaved }) {
     const { treatment, medication, dosage, medicineCost, ...cleanForm } = form;
     const payload = { ...cleanForm, diagnosis, medications, animal: form.animal || animals[0]?._id, totalCost };
     if (!payload.animal) return toast.error("Add an animal before creating health records");
+    if (selectedAnimal?.lifecycleStatus !== "deceased" && currentHealthStatus !== selectedAnimal?.healthStatus) {
+      await api.patch(`/animals/${payload.animal}/health-status`, { healthStatus: currentHealthStatus });
+    }
     if (isEdit) await api.put(`/health-records/${record._id}`, payload);
     else await api.post("/health-records", payload);
     toast.success(isEdit ? "Health record updated" : "Health record added");
@@ -142,8 +146,14 @@ function HealthModal({ record, animals, onClose, onSaved }) {
   return (
     <CrudModal title={isEdit ? "Edit Health Record" : "Add Health Record"} onClose={onClose}>
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-        <AnimalSelect animals={animals} value={form.animal} onChange={(value) => setForm({ ...form, animal: value })} />
+        <AnimalSelect animals={animals} value={form.animal} onChange={(value) => { setForm({ ...form, animal: value }); setCurrentHealthStatus(animals.find((animal) => animal._id === value)?.healthStatus || "unknown"); }} />
         <Field label="Date" type="date" value={form.recordDate} onChange={(value) => setForm({ ...form, recordDate: value })} />
+        {selectedAnimal && <section className="grid gap-3 rounded-lg border border-farm-100 bg-field-cream p-4 sm:col-span-2 sm:grid-cols-3">
+          <div><span className="label">Current lifecycle status</span><div className="mt-2 font-bold text-slate-800">{statusLabel(selectedAnimal.lifecycleStatus)}</div></div>
+          <label className="space-y-1"><span className="label">Current animal health status</span><select className="input" value={selectedAnimal.lifecycleStatus === "deceased" ? "unknown" : currentHealthStatus} disabled={selectedAnimal.lifecycleStatus === "deceased"} onChange={(event) => setCurrentHealthStatus(event.target.value)}>{["healthy", "sick", "recovering", "chronic", "referred", "unknown"].map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}</select></label>
+          <div><span className="label">Current reproductive status</span><div className="mt-2 font-bold text-slate-800">{statusLabel(selectedAnimal.reproductiveStatus)}</div></div>
+          <div className="flex flex-wrap gap-2 sm:col-span-3">{selectedAnimal.lifecycleStatus !== "deceased" && <><LifecycleButton value="deceased" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="sold" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="transferred" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="archived" animal={selectedAnimal} onUpdated={onSaved} /></>}{selectedAnimal.lifecycleStatus !== "active" && <LifecycleButton value="active" animal={selectedAnimal} onUpdated={onSaved} />}</div>
+        </section>}
         <Field label="Condition / disease" value={form.condition} onChange={(value) => setForm({ ...form, condition: value })} required />
         <label className="space-y-1">
           <span className="label">Health issue / service type</span>
@@ -205,12 +215,6 @@ function HealthModal({ record, animals, onClose, onSaved }) {
           </select>
         </label>
         <Field label="Follow-up date" type="date" value={form.followUpDate || ""} onChange={(value) => setForm({ ...form, followUpDate: value })} />
-        <label className="space-y-1">
-          <span className="label">Recovery status</span>
-          <select className="input" value={form.recoveryStatus} onChange={(event) => setForm({ ...form, recoveryStatus: event.target.value })}>
-            {["Open", "Recovering", "Recovered", "Chronic", "Referred"].map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </label>
         <div className="rounded-lg bg-field-cream p-3 text-sm font-semibold text-slate-600 sm:col-span-2">
           Veterinary service + all medicines + transport + other = {currency.format(totalCost)}
         </div>
@@ -226,9 +230,29 @@ function HealthModal({ record, animals, onClose, onSaved }) {
 }
 
 function Status({ value }) {
-  const tone = value === "Recovered" ? "bg-farm-50 text-farm-700" : value === "Recovering" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700";
-  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{value}</span>;
+  const tone = value === "healthy" ? "bg-farm-50 text-farm-700" : value === "recovering" || value === "referred" ? "bg-amber-50 text-amber-700" : value === "not_applicable" ? "bg-slate-800 text-white" : "bg-red-50 text-red-700";
+  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{statusLabel(value)}</span>;
 }
+
+function LifecycleButton({ value, animal, onUpdated }) {
+  async function update() {
+    if (!confirm(`Mark ${animal.animalId} as ${statusLabel(value)}?`)) return;
+    const payload = { lifecycleStatus: value, confirmed: true };
+    if (value === "deceased") {
+      const dateOfDeath = prompt("Date of death (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
+      if (!dateOfDeath) return;
+      payload.dateOfDeath = dateOfDeath;
+      payload.causeOfDeath = prompt("Cause of death", "Unknown") || "Unknown";
+      payload.deathNotes = prompt("Death notes (optional)", "") || "";
+    }
+    await api.patch(`/animals/${animal._id}/lifecycle-status`, payload);
+    toast.success(`Animal marked ${statusLabel(value)}`);
+    onUpdated();
+  }
+  return <button type="button" className={value === "deceased" ? "btn-muted text-red-700" : "btn-muted"} onClick={update}>{value === "active" ? "Restore to active" : `Mark as ${statusLabel(value)}`}</button>;
+}
+
+function statusLabel(value) { return String(value || "unknown").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 
 function AnimalSelect({ animals, value, onChange }) {
   return <label className="space-y-1"><span className="label">Animal</span><select className="input" value={value || ""} onChange={(event) => onChange(event.target.value)} required><option value="">Select animal</option>{animals.map((animal) => <option key={animal._id} value={animal._id}>{animal.animalId} - {animal.name || animal.species}</option>)}</select></label>;

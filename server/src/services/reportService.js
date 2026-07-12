@@ -228,7 +228,9 @@ export async function getReportRows(user, type, filters = {}) {
       Species: animal.species,
       Breed: animal.breed,
       Gender: animal.gender,
-      Status: animal.status,
+      LifecycleStatus: animal.lifecycleStatus,
+      HealthStatus: animal.lifecycleStatus === "deceased" ? "not_applicable" : animal.healthStatus,
+      ReproductiveStatus: animal.reproductiveStatus,
       DateOfDeath: animal.dateOfDeath,
       CauseOfDeath: animal.causeOfDeath === "Other" ? animal.customCauseOfDeath : animal.causeOfDeath,
       DeathNotes: animal.deathNotes,
@@ -249,8 +251,8 @@ export async function getReportRows(user, type, filters = {}) {
     }));
   }
   if (type === "health") {
-    const rows = await HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).lean();
-    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Date: r.recordDate, Condition: r.condition, ServiceType: r.serviceType, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Medication: medicationNames(r), Dosage: medicationDosages(r), MedicationDetails: medicationDetails(r), Vet: r.vetName, ServiceCharge: r.serviceCharge, MedicineCost: r.medicineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, FollowUpDate: r.followUpDate, Status: r.recoveryStatus, Notes: r.notes }));
+    const rows = await HealthRecord.find({ user }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ recordDate: -1 }).lean();
+    return rows.map((r) => ({ AnimalID: r.animal?.animalId, LifecycleStatus: r.animal?.lifecycleStatus, CurrentHealthStatus: r.animal?.lifecycleStatus === "deceased" ? "not_applicable" : r.animal?.healthStatus, ReproductiveStatus: r.animal?.reproductiveStatus, Date: r.recordDate, Condition: r.condition, ServiceType: r.serviceType, Symptoms: r.symptoms, Diagnosis: r.diagnosis, Medication: medicationNames(r), Dosage: medicationDosages(r), MedicationDetails: medicationDetails(r), Vet: r.vetName, ServiceCharge: r.serviceCharge, MedicineCost: r.medicineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, FollowUpDate: r.followUpDate, Notes: r.notes }));
   }
   if (type === "vet") return getReportRows(user, "health", filters);
   if (type === "vaccinations") {
@@ -355,7 +357,7 @@ export async function sendPdf(res, name, rows, type) {
   if (type === "animals") {
     for (const row of rows.slice(0, 30)) {
       doc.fontSize(12).text(`${row.AnimalID} - ${row.Name || row.Species}`, { continued: false });
-      doc.fontSize(9).text(`Species: ${row.Species} | Breed: ${row.Breed || ""} | Status: ${row.Status} | Weight: ${row.Weight}`);
+      doc.fontSize(9).text(`Species: ${row.Species} | Breed: ${row.Breed || ""} | Lifecycle: ${row.LifecycleStatus} | Health: ${row.HealthStatus} | Reproductive: ${row.ReproductiveStatus} | Weight: ${row.Weight}`);
       doc.text(`Parents: ${row.Mother || "N/A"} / ${row.Father || "N/A"} | Children: ${row.Children || "None"}`);
       doc.text(`Health: ${row.HealthRecords} | Vaccinations: ${row.Vaccinations} | Breeding: ${row.BreedingRecords} | Births: ${row.BirthRecords}`);
       if (row.QRCode) {
@@ -433,8 +435,10 @@ async function sendIndividualAnimalPdf(res, data) {
   bullet(doc, "Species", animal.species);
   bullet(doc, "Breed", animal.breed);
   bullet(doc, "Gender", animal.gender);
-  bullet(doc, "Status", animal.status);
-  if (animal.status === "Deceased") {
+  bullet(doc, "Lifecycle status", animal.lifecycleStatus);
+  bullet(doc, "Health status", animal.lifecycleStatus === "deceased" ? "Not applicable" : animal.healthStatus);
+  bullet(doc, "Reproductive status", animal.reproductiveStatus);
+  if (animal.lifecycleStatus === "deceased") {
     bullet(doc, "Date of death", fmt(animal.dateOfDeath));
     bullet(doc, "Cause of death", animal.causeOfDeath === "Other" ? animal.customCauseOfDeath : animal.causeOfDeath || "Not recorded");
     bullet(doc, "Veterinary confirmation", animal.veterinaryConfirmation || "Not recorded");
@@ -471,7 +475,7 @@ async function sendIndividualAnimalPdf(res, data) {
   });
 
   section(doc, "Health History");
-  health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.recoveryStatus} - ${r.diagnosis || "Diagnosis not recorded"} - ${medicationDetails(r) || "No medication"}`)) : bullet(doc, "Records", "None");
+  health.length ? health.forEach((r) => bullet(doc, fmt(r.recordDate), `${r.condition} - ${r.diagnosis || "Diagnosis not recorded"} - ${medicationDetails(r) || "No medication"}`)) : bullet(doc, "Records", "None");
 
   section(doc, "Vaccination History");
   vaccinations.length ? vaccinations.forEach((r) => bullet(doc, r.vaccineName, `${r.status} - next due ${fmt(r.nextDueDate)} - batch ${r.batchNumber || ""}`)) : bullet(doc, "Records", "None");

@@ -33,11 +33,6 @@ const healthRecordSchema = new mongoose.Schema(
     paymentMethod: { type: String, trim: true },
     followUpDate: { type: Date },
     financeTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
-    recoveryStatus: {
-      type: String,
-      enum: ["Open", "Recovering", "Recovered", "Chronic", "Referred"],
-      default: "Open"
-    },
     notes: { type: String, trim: true }
   },
   { timestamps: true }

@@ -390,7 +390,19 @@ Animal records can be marked **Deceased** from the add/edit animal form. A date 
 
 Deceased animals are excluded from active dashboard totals, breeding selectors, new vaccination scheduling, and vaccination reminders. Correcting a mistaken Deceased status requires an explicit confirmation and the original transition remains in the animal's `statusHistory`.
 
-No database migration is required. MongoDB adds the optional death fields when an animal is first updated; existing records continue to use their current status unchanged.
+No manual database command is required. The server performs the backward-compatible status migration described below during startup.
+
+## Shared Animal Statuses
+
+The Animal document is the single source of truth for three independent status categories:
+
+- `lifecycleStatus`: `active`, `sold`, `transferred`, `archived`, or `deceased`
+- `healthStatus`: `healthy`, `sick`, `recovering`, `chronic`, `referred`, or `unknown`
+- `reproductiveStatus`: `not_pregnant`, `pregnant`, `postpartum`, `nursing`, or `unknown`
+
+Health records no longer store a recovery/case status. Health & Vet reads and edits the linked animal's current `healthStatus` through the ownership-protected animal status API. Pregnancy changes only reproductive status and never overwrites health or lifecycle state.
+
+At API startup, an idempotent migration maps older mixed `status` values to the three fields. It only updates records where one or more normalized fields are missing, so rerunning it is safe. The legacy `status` property remains temporarily readable for backup compatibility but is no longer used by current dashboards, forms, reports, exports, QR profiles, reminders, or workflows.
 
 ## GitHub
 

@@ -88,7 +88,6 @@ async function seed() {
       medication: "Oxytetracycline",
       dosage: "5 ml once daily for 3 days",
       vetName: "Dr. Wanjiku",
-      recoveryStatus: "Recovering",
       notes: "Keep isolated and monitor temperature."
     },
     {
@@ -102,7 +101,6 @@ async function seed() {
       medication: "Vitamin support",
       dosage: "Daily for 5 days",
       vetName: "Dr. Wanjiku",
-      recoveryStatus: "Recovering",
       notes: "Check housing ventilation."
     },
     {
@@ -116,7 +114,6 @@ async function seed() {
       medication: "",
       dosage: "",
       vetName: "Dr. Otieno",
-      recoveryStatus: "Recovered",
       notes: "Schedule next check in four weeks."
     }
   ]);

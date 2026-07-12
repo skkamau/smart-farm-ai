@@ -91,7 +91,7 @@ export default function AnimalProfile() {
         }
       />
 
-      {animal.status === "Deceased" && (
+      {animal.lifecycleStatus === "deceased" && (
         <section className="mb-5 rounded-lg border border-slate-300 bg-slate-900 p-5 text-white">
           <div className="inline-flex rounded-md bg-white/15 px-2 py-1 text-xs font-black uppercase">Deceased</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -123,7 +123,9 @@ export default function AnimalProfile() {
             <Info label="Date of birth" value={formatDate(animal.dateOfBirth)} />
             <Info label="Weight" value={`${animal.weight || 0} kg`} />
             <Info label="Location" value={animal.location || "Not set"} />
-            <Info label="Status" value={animal.status} />
+            <Info label="Lifecycle status" value={statusLabel(animal.lifecycleStatus)} />
+            <Info label="Health status" value={animal.lifecycleStatus === "deceased" ? "Not applicable" : statusLabel(animal.healthStatus)} />
+            <Info label="Reproductive status" value={statusLabel(animal.reproductiveStatus)} />
             <Info label="Estimated value" value={currency.format(animal.estimatedValue || 0)} />
           </div>
           <div className="mt-5 rounded-lg border border-slate-100 bg-slate-50 p-4">
@@ -138,7 +140,7 @@ export default function AnimalProfile() {
         <aside className="card p-5">
           <h2 className="font-bold text-farm-950">QR Identification</h2>
           <p className="mt-1 text-sm text-slate-500">Permanent scan link for this animal profile.</p>
-          {animal.status === "Deceased" && <div className="mt-3 rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-bold text-white">This animal is deceased</div>}
+          {animal.lifecycleStatus === "deceased" && <div className="mt-3 rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-bold text-white">This animal is deceased</div>}
           <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
             {qrDataUrl ? <img className="mx-auto h-64 w-64" src={qrDataUrl} alt={`${animal.animalId} QR code`} /> : <div className="h-64 rounded-md bg-slate-100" />}
           </div>
@@ -205,7 +207,7 @@ export default function AnimalProfile() {
               <div key={record._id} className="rounded-lg border border-slate-100 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="font-bold text-slate-800">{record.condition}</div>
-                  <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{record.recoveryStatus}</span>
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{animal.lifecycleStatus === "deceased" ? "Not applicable" : statusLabel(animal.healthStatus)}</span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500">{formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
@@ -309,6 +311,8 @@ function HistoryLine({ label, value }) {
 function animalLabel(animal) {
   return animal ? `${animal.animalId} - ${animal.name || animal.species}` : "Not set";
 }
+
+function statusLabel(value) { return String(value || "unknown").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
 
 function FamilyBox({ title, items, empty }) {
   const visible = (items || []).filter(Boolean);

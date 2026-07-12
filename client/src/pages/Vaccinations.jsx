@@ -112,7 +112,7 @@ export default function Vaccinations() {
     Promise.all([api.get("/vaccinations"), api.get("/animals")])
       .then(([vaccineRes, animalRes]) => {
         setRecords(vaccineRes.data);
-        setAnimals(animalRes.data.filter((animal) => animal.status !== "Deceased"));
+        setAnimals(animalRes.data.filter((animal) => animal.lifecycleStatus === "active"));
       })
       .catch(() => toast.error("Could not load vaccinations"));
   }

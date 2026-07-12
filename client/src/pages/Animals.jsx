@@ -9,8 +9,10 @@ import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
 
-const emptyAnimal = { animalId: "", name: "", species: "", breed: "", gender: "Unknown", dateOfBirth: "", weight: "", location: "", status: "Healthy", estimatedValue: "", notes: "", dateOfDeath: "", causeOfDeath: "Unknown", customCauseOfDeath: "", deathNotes: "", veterinaryConfirmation: "" };
-const animalStatuses = ["Healthy", "Sick", "Pregnant", "Sold", "Transferred", "Archived", "Deceased"];
+const emptyAnimal = { animalId: "", name: "", species: "", breed: "", gender: "Unknown", dateOfBirth: "", weight: "", location: "", lifecycleStatus: "active", healthStatus: "unknown", reproductiveStatus: "unknown", estimatedValue: "", notes: "", dateOfDeath: "", causeOfDeath: "Unknown", customCauseOfDeath: "", deathNotes: "", veterinaryConfirmation: "" };
+const lifecycleStatuses = ["active", "sold", "transferred", "archived", "deceased"];
+const healthStatuses = ["healthy", "sick", "recovering", "chronic", "referred", "unknown"];
+const reproductiveStatuses = ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"];
 const deathCauses = ["Disease", "Injury", "Accident", "Birth complications", "Old age", "Predation", "Poisoning", "Unknown", "Other"];
 
 export default function Animals() {
@@ -28,7 +30,7 @@ export default function Animals() {
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return animals.filter((animal) => (!statusFilter || animal.status === statusFilter) && [animal.animalId, animal.name, animal.species, animal.breed, animal.status].join(" ").toLowerCase().includes(term));
+    return animals.filter((animal) => (!statusFilter || animal.lifecycleStatus === statusFilter) && [animal.animalId, animal.name, animal.species, animal.breed, animal.lifecycleStatus, animal.healthStatus, animal.reproductiveStatus].join(" ").toLowerCase().includes(term));
   }, [animals, search, statusFilter]);
 
   async function remove(id) {
@@ -50,7 +52,7 @@ export default function Animals() {
       </div>
       <div className="mb-4 grid gap-3 sm:max-w-3xl sm:grid-cols-[1fr_220px]">
         <input className="input" placeholder="Search by ID, name, species, breed, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All animals</option>{animalStatuses.map((status) => <option key={status}>{status}</option>)}</select>
+        <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All animals</option>{lifecycleStatuses.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}</select>
       </div>
       <DataTable
         rows={filtered}
@@ -60,7 +62,9 @@ export default function Animals() {
           { key: "name", label: "Name", render: (row) => row.name || "Unnamed" },
           { key: "species", label: "Species" },
           { key: "breed", label: "Breed" },
-          { key: "status", label: "Status", render: (row) => <Status value={row.status} /> },
+          { key: "lifecycleStatus", label: "Lifecycle", render: (row) => <Status value={row.lifecycleStatus} /> },
+          { key: "healthStatus", label: "Health", render: (row) => <Status value={row.lifecycleStatus === "deceased" ? "not_applicable" : row.healthStatus} /> },
+          { key: "reproductiveStatus", label: "Reproductive", render: (row) => labelStatus(row.reproductiveStatus) },
           { key: "weight", label: "Weight", render: (row) => `${row.weight || 0} kg` },
           { key: "qrCodeId", label: "QR", render: (row) => row.qrCodeId ? <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">Ready</span> : "Pending" },
           { key: "estimatedValue", label: "Value", render: (row) => currency.format(row.estimatedValue || 0) }
@@ -90,8 +94,8 @@ function AnimalToolCard({ to, label, icon: Icon }) {
 }
 
 function Status({ value }) {
-  const tone = value === "Deceased" ? "bg-slate-800 text-white" : value === "Sick" ? "bg-red-50 text-red-700" : value === "Pregnant" ? "bg-amber-50 text-amber-700" : "bg-farm-50 text-farm-700";
-  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{value}</span>;
+  const tone = value === "deceased" || value === "not_applicable" ? "bg-slate-800 text-white" : value === "sick" || value === "chronic" ? "bg-red-50 text-red-700" : value === "recovering" || value === "referred" ? "bg-amber-50 text-amber-700" : "bg-farm-50 text-farm-700";
+  return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{labelStatus(value)}</span>;
 }
 
 function AnimalModal({ animal, onClose, onSaved }) {
@@ -101,7 +105,11 @@ function AnimalModal({ animal, onClose, onSaved }) {
   async function submit(event) {
     event.preventDefault();
     const payload = { ...form, weight: Number(form.weight || 0), estimatedValue: Number(form.estimatedValue || 0) };
-    if (isEdit && animal.status === "Deceased" && form.status !== "Deceased") {
+    if (isEdit && animal.lifecycleStatus !== form.lifecycleStatus) {
+      if (!confirm(`Change lifecycle status from ${labelStatus(animal.lifecycleStatus)} to ${labelStatus(form.lifecycleStatus)}?`)) return;
+      payload.confirmLifecycleChange = true;
+    }
+    if (isEdit && animal.lifecycleStatus === "deceased" && form.lifecycleStatus !== "deceased") {
       if (!confirm("This changes the animal from Deceased. Historical death information will be preserved. Continue?")) return;
       payload.confirmStatusCorrection = true;
       payload.statusChangeReason = "Corrected deceased status";
@@ -123,9 +131,11 @@ function AnimalModal({ animal, onClose, onSaved }) {
         <Field label="Date of Birth" type="date" value={form.dateOfBirth || ""} onChange={(v) => setForm({ ...form, dateOfBirth: v })} />
         <Field label="Weight (kg)" type="number" value={form.weight} onChange={(v) => setForm({ ...form, weight: v })} />
         <Field label="Location" value={form.location || ""} onChange={(v) => setForm({ ...form, location: v })} />
-        <Select label="Status" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={animalStatuses} />
+        <Select label="Lifecycle status" value={form.lifecycleStatus} onChange={(v) => setForm({ ...form, lifecycleStatus: v })} options={lifecycleStatuses} />
+        <Select label="Health status" value={form.healthStatus} onChange={(v) => setForm({ ...form, healthStatus: v })} options={healthStatuses} disabled={form.lifecycleStatus === "deceased"} />
+        <Select label="Reproductive status" value={form.reproductiveStatus} onChange={(v) => setForm({ ...form, reproductiveStatus: v })} options={reproductiveStatuses} />
         <Field label="Estimated Value" type="number" value={form.estimatedValue} onChange={(v) => setForm({ ...form, estimatedValue: v })} />
-        {form.status === "Deceased" && <>
+        {form.lifecycleStatus === "deceased" && <>
           <div className="sm:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">The animal and all health, family, finance, document, and QR history will remain available.</div>
           <Field label="Date of death" type="date" value={form.dateOfDeath || ""} onChange={(v) => setForm({ ...form, dateOfDeath: v })} required />
           <Select label="Cause of death" value={form.causeOfDeath || "Unknown"} onChange={(v) => setForm({ ...form, causeOfDeath: v })} options={deathCauses} />
@@ -150,6 +160,8 @@ function Field({ label, value, onChange, type = "text", required }) {
   return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
 }
 
-function Select({ label, value, onChange, options }) {
-  return <label className="space-y-1"><span className="label">{label}</span><select className="input" value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
+function Select({ label, value, onChange, options, disabled }) {
+  return <label className="space-y-1"><span className="label">{label}</span><select className="input" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option} value={option}>{labelStatus(option)}</option>)}</select></label>;
 }
+
+function labelStatus(value) { return String(value || "unknown").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }

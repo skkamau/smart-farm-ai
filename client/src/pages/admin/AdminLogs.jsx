@@ -5,7 +5,7 @@ import adminApi from "../../services/adminApi";
 import { formatDate } from "../../utils";
 import { AdminPageHeader, StatusBadge } from "../../utils/admin";
 
-const actions = ["admin_login_success", "admin_login_failed", "user_suspended", "user_reactivated", "user_role_changed", "report_status_changed", "record_deleted"];
+const actions = ["admin_login_success", "admin_login_failed", "user_suspended", "user_reactivated", "user_role_changed", "report_status_changed", "record_deleted", "animal_status_changed"];
 
 export default function AdminLogs() {
   const [logs, setLogs] = useState([]);

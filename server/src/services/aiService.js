@@ -32,12 +32,12 @@ async function farmSnapshot(user) {
   const [animals, crops, healthRecords, vaccinations, breedingRecords, transactions] = await Promise.all([
     Animal.find({ user }).lean(),
     Crop.find({ user }).lean(),
-    HealthRecord.find({ user }).populate("animal", "animalId name species status").sort({ recordDate: -1 }).lean(),
-    VaccinationRecord.find({ user }).populate("animal", "animalId name species status").sort({ nextDueDate: 1 }),
-    BreedingRecord.find({ user }).populate("femaleAnimal", "animalId name species status").populate("maleAnimal", "animalId name species status").sort({ expectedBirthDate: 1 }).lean(),
+    HealthRecord.find({ user }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ recordDate: -1 }).lean(),
+    VaccinationRecord.find({ user }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ nextDueDate: 1 }),
+    BreedingRecord.find({ user }).populate("femaleAnimal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").populate("maleAnimal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ expectedBirthDate: 1 }).lean(),
     Transaction.find({ user }).sort({ transactionDate: -1 }).lean()
   ]);
-  const normalizedVaccinations = await Promise.all(vaccinations.map((record) => normalizeVaccination(record)));
+  const normalizedVaccinations = (await Promise.all(vaccinations.map((record) => normalizeVaccination(record)))).filter((record) => record.animal?.lifecycleStatus === "active");
   return { animals, crops, healthRecords, vaccinations: normalizedVaccinations.map((record) => record.toObject()), breedingRecords, transactions };
 }
 
@@ -88,7 +88,7 @@ export async function generateFarmIntelligence(user) {
     }));
   }
 
-  animals.filter((animal) => animal.status === "Sick").forEach((animal) => {
+  animals.filter((animal) => animal.lifecycleStatus === "active" && animal.healthStatus === "sick").forEach((animal) => {
     items.push(makeItem({
       type: "health",
       priority: "high",
@@ -127,7 +127,7 @@ export async function generateFarmIntelligence(user) {
       }));
     });
 
-  const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.status === "Healthy");
+  const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.lifecycleStatus === "active" && animal.healthStatus === "healthy" && animal.reproductiveStatus !== "pregnant");
   if (dueForBreeding.length) {
     items.push(makeItem({
       type: "breeding",
@@ -211,7 +211,7 @@ export async function answerFarmQuestion(user, question = "") {
   }
 
   if (q.includes("sick") || q.includes("health")) {
-    const sick = snapshot.animals.filter((animal) => animal.status === "Sick");
+    const sick = snapshot.animals.filter((animal) => animal.lifecycleStatus === "active" && animal.healthStatus === "sick");
     return sick.length ? sick.map((animal) => `${animal.animalId} (${animal.name || animal.species}) is marked sick.`).join("\n") : "No animals are currently marked sick.";
   }
 

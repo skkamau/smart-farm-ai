@@ -18,6 +18,9 @@ const animalSchema = new mongoose.Schema(
     weight: { type: Number, min: 0, default: 0 },
     location: { type: String, trim: true },
     status: { type: String, enum: ["Healthy", "Sick", "Pregnant", "Sold", "Transferred", "Archived", "Deceased"], default: "Healthy" },
+    lifecycleStatus: { type: String, enum: ["active", "sold", "transferred", "archived", "deceased"], default: "active", index: true },
+    healthStatus: { type: String, enum: ["healthy", "sick", "recovering", "chronic", "referred", "unknown"], default: "unknown", index: true },
+    reproductiveStatus: { type: String, enum: ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"], default: "unknown", index: true },
     dateOfDeath: { type: Date, default: null },
     causeOfDeath: { type: String, enum: ["", "Disease", "Injury", "Accident", "Birth complications", "Old age", "Predation", "Poisoning", "Unknown", "Other"], default: "" },
     customCauseOfDeath: { type: String, trim: true, maxlength: 200, default: "" },
@@ -50,11 +53,31 @@ animalSchema.pre("validate", function ensureQrCode(next) {
   next();
 });
 
+animalSchema.pre("validate", function mapLegacyStatus(next) {
+  if (this.isNew || this.isModified("status")) {
+    const legacy = {
+      Healthy: { lifecycleStatus: "active", healthStatus: "healthy" },
+      Sick: { lifecycleStatus: "active", healthStatus: "sick" },
+      Pregnant: { lifecycleStatus: "active", reproductiveStatus: "pregnant" },
+      Sold: { lifecycleStatus: "sold" },
+      Transferred: { lifecycleStatus: "transferred" },
+      Archived: { lifecycleStatus: "archived" },
+      Deceased: { lifecycleStatus: "deceased" }
+    }[this.status];
+    if (legacy) {
+      for (const [key, value] of Object.entries(legacy)) {
+        if (!this.isModified(key)) this[key] = value;
+      }
+    }
+  }
+  next();
+});
+
 animalSchema.pre("validate", function validateDeathDetails(next) {
-  if (this.status === "Deceased" && !this.dateOfDeath) {
+  if (this.lifecycleStatus === "deceased" && !this.dateOfDeath) {
     this.invalidate("dateOfDeath", "Date of death is required when status is Deceased");
   }
-  if (this.status === "Deceased" && this.causeOfDeath === "Other" && !this.customCauseOfDeath?.trim()) {
+  if (this.lifecycleStatus === "deceased" && this.causeOfDeath === "Other" && !this.customCauseOfDeath?.trim()) {
     this.invalidate("customCauseOfDeath", "Enter the cause of death when Other is selected");
   }
   next();

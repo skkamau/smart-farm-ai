@@ -13,7 +13,8 @@ const adminActivityLogSchema = new mongoose.Schema(
         "user_reactivated",
         "user_role_changed",
         "report_status_changed",
-        "record_deleted"
+        "record_deleted",
+        "animal_status_changed"
       ],
       required: true,
       index: true

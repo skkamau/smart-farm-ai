@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { connectDB } from "./config/db.js";
+import { migrateAnimalStatuses } from "./services/animalStatusMigration.js";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import animalRoutes from "./routes/animalRoutes.js";
@@ -72,7 +73,8 @@ app.use(notFound);
 app.use(errorHandler);
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await migrateAnimalStatuses();
     app.listen(port, host, () => console.log(`API running on http://${host}:${port}`));
   })
   .catch((error) => {

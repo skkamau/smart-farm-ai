@@ -81,7 +81,7 @@ export async function listVaccinations(req, res, next) {
   try {
     const query = { user: req.user._id };
     if (req.query.animal) query.animal = req.query.animal;
-    let records = await VaccinationRecord.find(query).populate("animal", "animalId name species status").sort({ nextDueDate: 1, dateGiven: -1 });
+    let records = await VaccinationRecord.find(query).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ nextDueDate: 1, dateGiven: -1 });
     records = await Promise.all(records.map((record) => normalizeVaccination(record)));
     res.json(records);
   } catch (error) {
@@ -93,11 +93,11 @@ export async function createVaccination(req, res, next) {
   try {
     const animal = await assertAnimal(req.user._id, req.body.animal);
     if (!animal) return res.status(404).json({ message: "Animal not found" });
-    if (animal.status === "Deceased") return res.status(409).json({ message: "New vaccinations cannot be scheduled for a deceased animal" });
+    if (animal.lifecycleStatus !== "active") return res.status(409).json({ message: "New vaccinations can only be scheduled for active animals" });
 
     const record = await VaccinationRecord.create({ ...payload(req.body), user: req.user._id });
     await syncVaccinationFinance(record, animal);
-    res.status(201).json(await record.populate("animal", "animalId name species status"));
+    res.status(201).json(await record.populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus"));
   } catch (error) {
     next(error);
   }
@@ -108,12 +108,12 @@ export async function updateVaccination(req, res, next) {
     if (req.body.animal) {
       const animal = await assertAnimal(req.user._id, req.body.animal);
       if (!animal) return res.status(404).json({ message: "Animal not found" });
-      if (animal.status === "Deceased") return res.status(409).json({ message: "Vaccinations cannot be reassigned to a deceased animal" });
+      if (animal.lifecycleStatus !== "active") return res.status(409).json({ message: "Vaccinations can only be reassigned to active animals" });
     }
     const record = await VaccinationRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, payload(req.body), {
       new: true,
       runValidators: true
-    }).populate("animal", "animalId name species status");
+    }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus");
     if (!record) return res.status(404).json({ message: "Vaccination record not found" });
     await syncVaccinationFinance(record, record.animal);
     res.json(record);

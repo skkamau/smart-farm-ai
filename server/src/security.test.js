@@ -7,7 +7,9 @@ import { createResetToken, hashResetToken, isStrongPassword } from "./utils/pass
 import { buildHealthPayload, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
 import User from "./models/User.js";
 import Animal from "./models/Animal.js";
+import HealthRecord from "./models/HealthRecord.js";
 import { animalRules } from "./controllers/animalController.js";
+import { legacyStatusMapping } from "./services/animalStatusMigration.js";
 import { requireRole } from "./middleware/auth.js";
 import { signAdminToken, signToken } from "./utils/tokens.js";
 import { sanitizeAuditMetadata } from "./services/auditService.js";
@@ -74,6 +76,14 @@ try {
   assert.equal(invalidHealthErrors.some((error) => error.path === "followUpDate"), true, "follow-up dates must be valid");
 
   assert.equal(Animal.schema.path("status").enumValues.includes("Deceased"), true, "animal status must support Deceased");
+  assert.deepEqual(Animal.schema.path("lifecycleStatus").enumValues, ["active", "sold", "transferred", "archived", "deceased"], "lifecycle statuses must be constrained");
+  assert.deepEqual(Animal.schema.path("healthStatus").enumValues, ["healthy", "sick", "recovering", "chronic", "referred", "unknown"], "health statuses must be constrained");
+  assert.deepEqual(Animal.schema.path("reproductiveStatus").enumValues, ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"], "reproductive statuses must be constrained");
+  assert.equal(HealthRecord.schema.path("recoveryStatus"), undefined, "health records must not store duplicate recovery status");
+  assert.deepEqual(legacyStatusMapping("Healthy"), { lifecycleStatus: "active", healthStatus: "healthy", reproductiveStatus: "unknown" });
+  assert.deepEqual(legacyStatusMapping("Sick"), { lifecycleStatus: "active", healthStatus: "sick", reproductiveStatus: "unknown" });
+  assert.deepEqual(legacyStatusMapping("Pregnant"), { lifecycleStatus: "active", healthStatus: "unknown", reproductiveStatus: "pregnant" });
+  assert.deepEqual(legacyStatusMapping("Deceased"), { lifecycleStatus: "deceased", healthStatus: "unknown", reproductiveStatus: "unknown" });
   const missingDeathDate = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Deceased" });
   assert.equal(missingDeathDate.some((error) => error.path === "dateOfDeath"), true, "deceased animals must require a date of death");
   const invalidDeathStatus = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Dead" });
