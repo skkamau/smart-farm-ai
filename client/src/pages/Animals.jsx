@@ -59,14 +59,9 @@ export default function Animals() {
         emptyText="No animal records yet."
         columns={[
           { key: "animalId", label: "Animal ID" },
-          { key: "name", label: "Name", render: (row) => row.name || "Unnamed" },
           { key: "species", label: "Species" },
-          { key: "breed", label: "Breed" },
-          { key: "lifecycleStatus", label: "Lifecycle", render: (row) => <Status value={row.lifecycleStatus} /> },
-          { key: "healthStatus", label: "Health", render: (row) => <Status value={row.lifecycleStatus === "deceased" ? "not_applicable" : row.healthStatus} /> },
-          { key: "reproductiveStatus", label: "Reproductive", render: (row) => labelStatus(row.reproductiveStatus) },
+          { key: "statuses", label: "Status", render: (row) => <AnimalStatuses animal={row} /> },
           { key: "weight", label: "Weight", render: (row) => `${row.weight || 0} kg` },
-          { key: "qrCodeId", label: "QR", render: (row) => row.qrCodeId ? <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">Ready</span> : "Pending" },
           { key: "estimatedValue", label: "Value", render: (row) => currency.format(row.estimatedValue || 0) }
         ]}
         actions={(row) => (
@@ -96,6 +91,16 @@ function AnimalToolCard({ to, label, icon: Icon }) {
 function Status({ value }) {
   const tone = value === "deceased" || value === "not_applicable" ? "bg-slate-800 text-white" : value === "sick" || value === "chronic" ? "bg-red-50 text-red-700" : value === "recovering" || value === "referred" ? "bg-amber-50 text-amber-700" : "bg-farm-50 text-farm-700";
   return <span className={`rounded-md px-2 py-1 text-xs font-bold ${tone}`}>{labelStatus(value)}</span>;
+}
+
+function AnimalStatuses({ animal }) {
+  return (
+    <div className="flex min-w-40 flex-col items-start gap-1.5">
+      <div className="flex items-center gap-2"><span className="w-20 text-[10px] font-bold uppercase text-slate-400">Lifecycle</span><Status value={animal.lifecycleStatus} /></div>
+      <div className="flex items-center gap-2"><span className="w-20 text-[10px] font-bold uppercase text-slate-400">Health</span><Status value={animal.lifecycleStatus === "deceased" ? "not_applicable" : animal.healthStatus} /></div>
+      <div className="flex items-center gap-2"><span className="w-20 text-[10px] font-bold uppercase text-slate-400">Reproductive</span><span className="text-xs font-semibold text-slate-700">{labelStatus(animal.reproductiveStatus)}</span></div>
+    </div>
+  );
 }
 
 function AnimalModal({ animal, onClose, onSaved }) {
