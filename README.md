@@ -384,6 +384,14 @@ Usage events store only the account ID, an allowlisted feature name, and the UTC
 
 Screenshot files currently use the same local `server/uploads` storage as existing farm documents. On an ephemeral hosting filesystem, files can disappear after a restart; production should move uploads to private object storage before relying on long-term screenshot retention.
 
+## Deceased Animal Records
+
+Animal records can be marked **Deceased** from the add/edit animal form. A date of death is required; cause, custom cause, notes, veterinary confirmation, and supporting animal documents are optional. Deceased animals remain searchable and their profiles, QR codes, family links, health records, vaccinations, finance history, and exports remain available.
+
+Deceased animals are excluded from active dashboard totals, breeding selectors, new vaccination scheduling, and vaccination reminders. Correcting a mistaken Deceased status requires an explicit confirmation and the original transition remains in the animal's `statusHistory`.
+
+No database migration is required. MongoDB adds the optional death fields when an animal is first updated; existing records continue to use their current status unchanged.
+
 ## GitHub
 
 This folder is ready to commit and push.

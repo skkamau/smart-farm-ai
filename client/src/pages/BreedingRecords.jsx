@@ -19,7 +19,7 @@ export default function BreedingRecords() {
     Promise.all([api.get("/breeding-records"), api.get("/animals")])
       .then(([recordRes, animalRes]) => {
         setRecords(recordRes.data);
-        setAnimals(animalRes.data);
+        setAnimals(animalRes.data.filter((animal) => animal.status !== "Deceased"));
       })
       .catch(() => toast.error("Could not load breeding records"));
   }

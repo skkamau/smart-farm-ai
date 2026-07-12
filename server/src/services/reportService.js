@@ -229,6 +229,10 @@ export async function getReportRows(user, type, filters = {}) {
       Breed: animal.breed,
       Gender: animal.gender,
       Status: animal.status,
+      DateOfDeath: animal.dateOfDeath,
+      CauseOfDeath: animal.causeOfDeath === "Other" ? animal.customCauseOfDeath : animal.causeOfDeath,
+      DeathNotes: animal.deathNotes,
+      VeterinaryConfirmation: animal.veterinaryConfirmation,
       Weight: animal.weight,
       Location: animal.location,
       EstimatedValue: animal.estimatedValue,
@@ -430,6 +434,12 @@ async function sendIndividualAnimalPdf(res, data) {
   bullet(doc, "Breed", animal.breed);
   bullet(doc, "Gender", animal.gender);
   bullet(doc, "Status", animal.status);
+  if (animal.status === "Deceased") {
+    bullet(doc, "Date of death", fmt(animal.dateOfDeath));
+    bullet(doc, "Cause of death", animal.causeOfDeath === "Other" ? animal.customCauseOfDeath : animal.causeOfDeath || "Not recorded");
+    bullet(doc, "Veterinary confirmation", animal.veterinaryConfirmation || "Not recorded");
+    bullet(doc, "Death notes", animal.deathNotes || "None");
+  }
   bullet(doc, "Weight", `${animal.weight || 0} kg`);
   bullet(doc, "Location", animal.location);
   bullet(doc, "Estimated value", animal.estimatedValue);

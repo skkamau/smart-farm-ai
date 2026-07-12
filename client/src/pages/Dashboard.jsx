@@ -42,11 +42,20 @@ export default function Dashboard() {
       </section>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Animals" value={totals.animals ?? "..."} detail={`${totals.sickAnimals || 0} sick animals`} />
+        <StatCard label="Active animals" value={totals.animals ?? "..."} detail={`${totals.deceasedAnimals || 0} deceased · ${totals.sickAnimals || 0} sick`} />
         <StatCard label="Crops" value={totals.crops ?? "..."} detail={`${totals.readyCrops || 0} ready for harvest`} tone="slate" />
         <StatCard label="Profit/Loss" value={currency.format(totals.profitLoss || 0)} detail="Income minus expenses" tone={(totals.profitLoss || 0) >= 0 ? "green" : "red"} />
         <StatCard label="Vaccines" value={(totals.upcomingVaccinations || 0) + (totals.overdueVaccinations || 0)} detail={`${totals.overdueVaccinations || 0} overdue`} tone={(totals.overdueVaccinations || 0) > 0 ? "red" : "amber"} />
       </div>
+
+      {data?.mortality && (
+        <section className="card mt-5 p-5">
+          <div className="grid gap-4 lg:grid-cols-[180px_1fr]">
+            <div><div className="label">12-month mortality</div><div className="mt-2 text-3xl font-black text-farm-950">{data.mortality.rate === null ? "Not available" : `${data.mortality.rate}%`}</div><div className="mt-1 text-sm text-slate-500">{data.mortality.deaths} recorded death{data.mortality.deaths === 1 ? "" : "s"}</div></div>
+            <div><div className="label">Deaths by cause</div><div className="mt-2 flex flex-wrap gap-2">{Object.entries(data.mortality.deathsByCause || {}).map(([cause, count]) => <span key={cause} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold text-slate-700">{cause}: {count}</span>)}{!Object.keys(data.mortality.deathsByCause || {}).length && <span className="text-sm text-slate-500">No deaths recorded in this period.</span>}</div><p className="mt-3 text-xs text-slate-500">{data.mortality.formula}. {data.mortality.note}</p></div>
+          </div>
+        </section>
+      )}
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
         <section className="card p-5">

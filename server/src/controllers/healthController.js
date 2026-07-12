@@ -62,6 +62,10 @@ async function assertAnimal(user, animalId) {
   return animal;
 }
 
+function recordAfterDeath(animal, recordDate) {
+  return animal.status === "Deceased" && animal.dateOfDeath && new Date(recordDate || Date.now()) > new Date(animal.dateOfDeath);
+}
+
 async function syncHealthFinance(record, animal) {
   const totalCost = Number(record.totalCost || 0);
   if (!totalCost) {
@@ -120,6 +124,7 @@ export async function createHealthRecord(req, res, next) {
   try {
     const animal = await assertAnimal(req.user._id, req.body.animal);
     if (!animal) return res.status(404).json({ message: "Animal not found" });
+    if (recordAfterDeath(animal, req.body.recordDate)) return res.status(409).json({ message: "Health records cannot be dated after the animal's death" });
 
     const record = await HealthRecord.create({ ...buildHealthPayload(req.body), user: req.user._id });
     if (record.recoveryStatus !== "Recovered" && animal.status !== "Sick") {
@@ -135,8 +140,10 @@ export async function createHealthRecord(req, res, next) {
 
 export async function updateHealthRecord(req, res, next) {
   try {
-    if (req.body.animal && !(await assertAnimal(req.user._id, req.body.animal))) {
-      return res.status(404).json({ message: "Animal not found" });
+    if (req.body.animal) {
+      const animal = await assertAnimal(req.user._id, req.body.animal);
+      if (!animal) return res.status(404).json({ message: "Animal not found" });
+      if (recordAfterDeath(animal, req.body.recordDate)) return res.status(409).json({ message: "Health records cannot be dated after the animal's death" });
     }
     const record = await HealthRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, buildHealthPayload(req.body), {
       new: true,

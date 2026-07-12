@@ -91,6 +91,19 @@ export default function AnimalProfile() {
         }
       />
 
+      {animal.status === "Deceased" && (
+        <section className="mb-5 rounded-lg border border-slate-300 bg-slate-900 p-5 text-white">
+          <div className="inline-flex rounded-md bg-white/15 px-2 py-1 text-xs font-black uppercase">Deceased</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <DeathInfo label="Date of death" value={formatDate(animal.dateOfDeath)} />
+            <DeathInfo label="Cause" value={animal.causeOfDeath === "Other" ? animal.customCauseOfDeath : animal.causeOfDeath || "Not recorded"} />
+            <DeathInfo label="Recorded by" value={animal.deathRecordedBy?.name || "Farm owner"} />
+            <DeathInfo label="Veterinary confirmation" value={animal.veterinaryConfirmation || "Not recorded"} />
+          </div>
+          {animal.deathNotes && <p className="mt-4 text-sm text-slate-200">{animal.deathNotes}</p>}
+        </section>
+      )}
+
       <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <section className="card p-5">
           <h2 className="mb-4 font-bold text-farm-950">Basic Information</h2>
@@ -125,6 +138,7 @@ export default function AnimalProfile() {
         <aside className="card p-5">
           <h2 className="font-bold text-farm-950">QR Identification</h2>
           <p className="mt-1 text-sm text-slate-500">Permanent scan link for this animal profile.</p>
+          {animal.status === "Deceased" && <div className="mt-3 rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-bold text-white">This animal is deceased</div>}
           <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
             {qrDataUrl ? <img className="mx-auto h-64 w-64" src={qrDataUrl} alt={`${animal.animalId} QR code`} /> : <div className="h-64 rounded-md bg-slate-100" />}
           </div>
@@ -285,6 +299,8 @@ function Info({ label, value }) {
     </div>
   );
 }
+
+function DeathInfo({ label, value }) { return <div><div className="text-xs font-bold uppercase text-slate-400">{label}</div><div className="mt-1 font-semibold">{value}</div></div>; }
 
 function HistoryLine({ label, value }) {
   return <div><span className="font-semibold text-slate-500">{label}:</span> <span className="text-slate-700">{value || "Not recorded"}</span></div>;

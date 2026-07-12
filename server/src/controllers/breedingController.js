@@ -20,7 +20,7 @@ function payload(body) {
 
 async function assertAnimals(user, femaleAnimal, maleAnimal) {
   const animals = await Animal.find({ user, _id: { $in: [femaleAnimal, maleAnimal] } });
-  return animals.length === 2;
+  return animals.length === 2 && animals.every((animal) => animal.status !== "Deceased");
 }
 
 async function syncFemaleStatus(user, record) {
@@ -53,7 +53,7 @@ export async function listBreedingRecords(req, res, next) {
 export async function createBreedingRecord(req, res, next) {
   try {
     if (!(await assertAnimals(req.user._id, req.body.femaleAnimal, req.body.maleAnimal))) {
-      return res.status(404).json({ message: "Female or male animal not found" });
+      return res.status(404).json({ message: "Female or male animal was not found or is deceased" });
     }
     const record = await BreedingRecord.create({ ...payload(req.body), user: req.user._id });
     await syncFemaleStatus(req.user._id, record);
@@ -66,7 +66,7 @@ export async function createBreedingRecord(req, res, next) {
 export async function updateBreedingRecord(req, res, next) {
   try {
     if (req.body.femaleAnimal && req.body.maleAnimal && !(await assertAnimals(req.user._id, req.body.femaleAnimal, req.body.maleAnimal))) {
-      return res.status(404).json({ message: "Female or male animal not found" });
+      return res.status(404).json({ message: "Female or male animal was not found or is deceased" });
     }
     const record = await BreedingRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, payload(req.body), { new: true, runValidators: true })
       .populate("femaleAnimal", "animalId name species status")

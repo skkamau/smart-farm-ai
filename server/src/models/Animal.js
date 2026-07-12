@@ -17,7 +17,22 @@ const animalSchema = new mongoose.Schema(
     dateOfBirth: { type: Date },
     weight: { type: Number, min: 0, default: 0 },
     location: { type: String, trim: true },
-    status: { type: String, enum: ["Healthy", "Sick", "Pregnant", "Sold", "Archived"], default: "Healthy" },
+    status: { type: String, enum: ["Healthy", "Sick", "Pregnant", "Sold", "Transferred", "Archived", "Deceased"], default: "Healthy" },
+    dateOfDeath: { type: Date, default: null },
+    causeOfDeath: { type: String, enum: ["", "Disease", "Injury", "Accident", "Birth complications", "Old age", "Predation", "Poisoning", "Unknown", "Other"], default: "" },
+    customCauseOfDeath: { type: String, trim: true, maxlength: 200, default: "" },
+    deathNotes: { type: String, trim: true, maxlength: 2000, default: "" },
+    deathRecordedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    veterinaryConfirmation: { type: String, trim: true, maxlength: 500, default: "" },
+    deathAttachmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Document", default: null },
+    statusChangedAt: { type: Date, default: Date.now },
+    statusHistory: [{
+      from: { type: String, trim: true },
+      to: { type: String, required: true, trim: true },
+      changedAt: { type: Date, default: Date.now },
+      changedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+      reason: { type: String, trim: true, maxlength: 500, default: "" }
+    }],
     estimatedValue: { type: Number, min: 0, default: 0 },
     mother: { type: mongoose.Schema.Types.ObjectId, ref: "Animal", default: null, index: true },
     father: { type: mongoose.Schema.Types.ObjectId, ref: "Animal", default: null, index: true },
@@ -32,6 +47,16 @@ const animalSchema = new mongoose.Schema(
 animalSchema.pre("validate", function ensureQrCode(next) {
   if (!this.qrCodeId) this.qrCodeId = `QR-${randomUUID()}`;
   this.qrCodeValue = buildQrValue(this);
+  next();
+});
+
+animalSchema.pre("validate", function validateDeathDetails(next) {
+  if (this.status === "Deceased" && !this.dateOfDeath) {
+    this.invalidate("dateOfDeath", "Date of death is required when status is Deceased");
+  }
+  if (this.status === "Deceased" && this.causeOfDeath === "Other" && !this.customCauseOfDeath?.trim()) {
+    this.invalidate("customCauseOfDeath", "Enter the cause of death when Other is selected");
+  }
   next();
 });
 

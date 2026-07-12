@@ -6,6 +6,8 @@ import { publicUser } from "./controllers/authController.js";
 import { createResetToken, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
 import { buildHealthPayload, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
 import User from "./models/User.js";
+import Animal from "./models/Animal.js";
+import { animalRules } from "./controllers/animalController.js";
 import { requireRole } from "./middleware/auth.js";
 import { signAdminToken, signToken } from "./utils/tokens.js";
 import { sanitizeAuditMetadata } from "./services/auditService.js";
@@ -13,6 +15,12 @@ import { sanitizeAuditMetadata } from "./services/auditService.js";
 async function healthValidationErrors(body) {
   const request = { body };
   await Promise.all(healthRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
+
+async function animalValidationErrors(body) {
+  const request = { body };
+  await Promise.all(animalRules.map((rule) => rule.run(request)));
   return validationResult(request).array();
 }
 
@@ -64,6 +72,17 @@ try {
   assert.equal(invalidHealthErrors.some((error) => error.path === "medications[0].medicineCharge"), true, "medicine charges must be non-negative numbers");
   assert.equal(invalidHealthErrors.some((error) => error.path === "serviceCharge"), true, "service charges must be numeric");
   assert.equal(invalidHealthErrors.some((error) => error.path === "followUpDate"), true, "follow-up dates must be valid");
+
+  assert.equal(Animal.schema.path("status").enumValues.includes("Deceased"), true, "animal status must support Deceased");
+  const missingDeathDate = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Deceased" });
+  assert.equal(missingDeathDate.some((error) => error.path === "dateOfDeath"), true, "deceased animals must require a date of death");
+  const invalidDeathStatus = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Dead" });
+  assert.equal(invalidDeathStatus.some((error) => error.path === "status"), true, "invalid animal statuses must be rejected");
+  const invalidDeathCause = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Deceased", dateOfDeath: "2026-07-12", causeOfDeath: "Unlisted" });
+  assert.equal(invalidDeathCause.some((error) => error.path === "causeOfDeath"), true, "invalid death causes must be rejected");
+  const otherWithoutDetail = new Animal({ user: "507f1f77bcf86cd799439011", animalId: "G-002", species: "Goat", status: "Deceased", dateOfDeath: new Date(), causeOfDeath: "Other" });
+  const otherCauseError = await otherWithoutDetail.validate().then(() => null).catch((error) => error);
+  assert.equal(Boolean(otherCauseError?.errors?.customCauseOfDeath), true, "Other death causes must include custom details");
 
   process.env.NODE_ENV = "production";
   process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";

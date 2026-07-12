@@ -93,6 +93,7 @@ export async function createVaccination(req, res, next) {
   try {
     const animal = await assertAnimal(req.user._id, req.body.animal);
     if (!animal) return res.status(404).json({ message: "Animal not found" });
+    if (animal.status === "Deceased") return res.status(409).json({ message: "New vaccinations cannot be scheduled for a deceased animal" });
 
     const record = await VaccinationRecord.create({ ...payload(req.body), user: req.user._id });
     await syncVaccinationFinance(record, animal);
@@ -104,8 +105,10 @@ export async function createVaccination(req, res, next) {
 
 export async function updateVaccination(req, res, next) {
   try {
-    if (req.body.animal && !(await assertAnimal(req.user._id, req.body.animal))) {
-      return res.status(404).json({ message: "Animal not found" });
+    if (req.body.animal) {
+      const animal = await assertAnimal(req.user._id, req.body.animal);
+      if (!animal) return res.status(404).json({ message: "Animal not found" });
+      if (animal.status === "Deceased") return res.status(409).json({ message: "Vaccinations cannot be reassigned to a deceased animal" });
     }
     const record = await VaccinationRecord.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, payload(req.body), {
       new: true,

@@ -20,7 +20,7 @@ export async function getDashboard(req, res, next) {
       Crop.find({ user }).lean(),
       Transaction.find({ user }).sort({ transactionDate: -1 }).limit(8).lean(),
       HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).limit(6).lean(),
-      VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).limit(25),
+      VaccinationRecord.find({ user }).populate("animal", "animalId name species status").sort({ nextDueDate: 1 }).limit(25),
       BirthRecord.find({ user }).populate("mother", "animalId name species").populate("father", "animalId name species").populate("offspring", "animalId name species").sort({ birthDate: -1 }).limit(6).lean(),
       BreedingRecord.find({ user, pregnancyStatus: "pregnant", expectedBirthDate: { $gte: today, $lte: next45 } })
         .populate("femaleAnimal", "animalId name species")
@@ -30,7 +30,8 @@ export async function getDashboard(req, res, next) {
         .lean(),
       WeatherRecord.findOne({ user }).sort({ recordDate: -1 }).lean()
     ]);
-    const normalizedVaccinations = await Promise.all(vaccinations.map((record) => normalizeVaccination(record)));
+    const normalizedVaccinations = (await Promise.all(vaccinations.map((record) => normalizeVaccination(record))))
+      .filter((record) => record.animal?.status !== "Deceased");
 
     const income = await Transaction.aggregate([
       { $match: { user, type: "income" } },
@@ -45,6 +46,17 @@ export async function getDashboard(req, res, next) {
     const totalExpenses = expenses[0]?.total || 0;
     const sickAnimals = animals.filter((animal) => animal.status === "Sick").length;
     const pregnantAnimals = animals.filter((animal) => animal.status === "Pregnant").length;
+    const deceasedAnimals = animals.filter((animal) => animal.status === "Deceased").length;
+    const activeAnimals = animals.filter((animal) => !["Sold", "Transferred", "Archived", "Deceased"].includes(animal.status)).length;
+    const mortalityStart = new Date(today);
+    mortalityStart.setFullYear(today.getFullYear() - 1);
+    const recentDeaths = animals.filter((animal) => animal.status === "Deceased" && animal.dateOfDeath && new Date(animal.dateOfDeath) >= mortalityStart && new Date(animal.dateOfDeath) <= today);
+    const mortalityDenominator = activeAnimals + recentDeaths.length;
+    const deathsByCause = recentDeaths.reduce((counts, animal) => {
+      const cause = animal.causeOfDeath === "Other" ? animal.customCauseOfDeath || "Other" : animal.causeOfDeath || "Unknown";
+      counts[cause] = (counts[cause] || 0) + 1;
+      return counts;
+    }, {});
     const readyCrops = crops.filter((crop) => crop.status === "Ready").length;
     const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.status === "Healthy").length;
     const upcomingVaccinations = normalizedVaccinations.filter((record) => record.status === "upcoming").length;
@@ -53,7 +65,9 @@ export async function getDashboard(req, res, next) {
 
     res.json({
       totals: {
-        animals: animals.length,
+        animals: activeAnimals,
+        totalAnimalRecords: animals.length,
+        deceasedAnimals,
         crops: crops.length,
         sickAnimals,
         pregnantAnimals,
@@ -66,7 +80,16 @@ export async function getDashboard(req, res, next) {
         expenses: totalExpenses,
         profitLoss: totalIncome - totalExpenses
       },
-      animalStatus: ["Healthy", "Sick", "Pregnant", "Sold", "Archived"].map((status) => ({
+      mortality: {
+        dateFrom: mortalityStart,
+        dateTo: today,
+        deaths: recentDeaths.length,
+        deathsByCause,
+        rate: mortalityDenominator ? Number(((recentDeaths.length / mortalityDenominator) * 100).toFixed(1)) : null,
+        formula: "Deaths recorded in the last 12 months / (currently active animals + those deaths) x 100",
+        note: "This operational rate uses available animal records and may be incomplete if historical animals or death dates have not been entered."
+      },
+      animalStatus: ["Healthy", "Sick", "Pregnant", "Sold", "Transferred", "Archived", "Deceased"].map((status) => ({
         status,
         count: animals.filter((animal) => animal.status === status).length
       })),
