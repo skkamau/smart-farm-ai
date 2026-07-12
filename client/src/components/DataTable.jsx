@@ -21,11 +21,11 @@ export default function DataTable({ columns, rows, emptyText, actions }) {
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              rows.map((row, rowIndex) => (
                 <tr key={row._id} className="hover:bg-field-cream">
                   {columns.map((column) => (
                     <td key={column.key} className="whitespace-nowrap px-4 py-3 font-medium text-slate-700">
-                      {column.render ? column.render(row) : row[column.key]}
+                      {column.render ? column.render(row, rowIndex) : row[column.key]}
                     </td>
                   ))}
                   {actions && <td className="px-4 py-3 text-right">{actions(row)}</td>}

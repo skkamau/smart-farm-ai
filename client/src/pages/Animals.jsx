@@ -58,8 +58,10 @@ export default function Animals() {
         rows={filtered}
         emptyText="No animal records yet."
         columns={[
+          { key: "rowNumber", label: "No.", render: (_row, rowIndex) => rowIndex + 1 },
           { key: "animalId", label: "Animal ID" },
           { key: "species", label: "Species" },
+          { key: "gender", label: "Gender" },
           { key: "statuses", label: "Status", render: (row) => <AnimalStatuses animal={row} /> },
           { key: "weight", label: "Weight", render: (row) => `${row.weight || 0} kg` },
           { key: "estimatedValue", label: "Value", render: (row) => currency.format(row.estimatedValue || 0) }
