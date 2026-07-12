@@ -1,9 +1,9 @@
-import { Leaf } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
 import { storageRemove } from "../utils/storage";
+import BrandLogo from "../components/BrandLogo";
 
 function strongPassword(password) {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password);
@@ -47,10 +47,8 @@ export default function ResetPassword() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center">
         <section className="card w-full p-5 shadow-lift sm:p-7">
           <div className="mb-7 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-field-sage text-farm-800 shadow-soft">
-              <Leaf className="h-10 w-10" />
-            </div>
-            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950">Create new password</h1>
+            <BrandLogo size="large" iconOnly className="justify-center" />
+            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950 dark:text-white">Create new password</h1>
             <p className="mt-2 text-sm font-medium text-slate-500">Use a strong password to keep your farm account secure.</p>
           </div>
           <form onSubmit={submit} className="space-y-4">

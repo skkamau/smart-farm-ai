@@ -1,8 +1,8 @@
-import { Leaf } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import BrandLogo from "../components/BrandLogo";
 
 const genericMessage = "If an account exists with this email, a password reset link has been sent.";
 
@@ -51,10 +51,8 @@ function AuthShell({ title, subtitle, children }) {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center">
         <section className="card w-full p-5 shadow-lift sm:p-7">
           <div className="mb-7 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-field-sage text-farm-800 shadow-soft">
-              <Leaf className="h-10 w-10" />
-            </div>
-            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950">{title}</h1>
+            <BrandLogo size="large" iconOnly className="justify-center" />
+            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950 dark:text-white">{title}</h1>
             <p className="mt-2 text-sm font-medium text-slate-500">{subtitle}</p>
           </div>
           {children}

@@ -1,8 +1,9 @@
-import { BarChart3, Beef, HeartPulse, Leaf, LogOut, Menu, Settings, Sprout } from "lucide-react";
+import { BarChart3, Beef, HeartPulse, LogOut, Menu, Settings, Sprout } from "lucide-react";
 import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import BrandLogo from "./BrandLogo";
 
 const bottomNav = [
   { to: "/", label: "Dashboard", icon: BarChart3, match: (path) => path === "/" },
@@ -38,12 +39,7 @@ export default function Layout() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-farm-100 bg-white/90 backdrop-blur dark:border-farm-800 dark:bg-farm-950/90">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-black text-farm-950 dark:text-white">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-farm-800 text-white">
-              <Leaf className="h-4 w-4" />
-            </span>
-            SmartFarm AI
-          </Link>
+          <Link to="/" aria-label="Smart Farm AI dashboard"><BrandLogo size="small" /></Link>
           <div className="flex items-center gap-2">
             <Link to="/settings" className="btn-muted px-2" aria-label="Profile and settings" title="Profile and settings">
               <Settings className="h-5 w-5" />

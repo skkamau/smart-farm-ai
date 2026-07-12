@@ -1,8 +1,9 @@
-import { Beef, Leaf, Sprout, WalletCards } from "lucide-react";
+import { Beef, Sprout, WalletCards } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Auth({ mode }) {
   const isSignup = mode === "signup";
@@ -37,10 +38,8 @@ export default function Auth({ mode }) {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center">
         <section className="card w-full p-5 shadow-lift sm:p-7">
           <div className="mb-7 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-field-sage text-farm-800 shadow-soft">
-              <Leaf className="h-10 w-10" />
-            </div>
-            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950">SmartFarm AI</h1>
+            <BrandLogo size="large" iconOnly className="justify-center" />
+            <h1 className="mt-5 text-2xl font-black tracking-tight text-farm-950 dark:text-white">Smart Farm <span className="text-lime-500">AI</span></h1>
             <p className="mt-1 text-sm font-medium text-slate-500">Smart farming made simple</p>
           </div>
 

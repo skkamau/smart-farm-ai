@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
+import BrandLogo from "../components/BrandLogo";
 
 const themes = [
   { value: "light", label: "Light", icon: Sun },
@@ -114,10 +115,10 @@ export default function Settings() {
         eyebrow="Profile & Settings"
         title={previewName}
         action={
-          <button className="btn-primary" disabled={saving}>
+          <div className="flex items-center gap-3"><BrandLogo size="small" iconOnly /><button className="btn-primary" disabled={saving}>
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save"}
-          </button>
+          </button></div>
         }
       />
 

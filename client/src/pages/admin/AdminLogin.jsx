@@ -1,9 +1,9 @@
-import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAdmin } from "../../context/AdminContext";
 import { useAdminLightTheme } from "../../utils/adminTheme";
+import BrandLogo from "../../components/BrandLogo";
 
 export default function AdminLogin() {
   useAdminLightTheme();
@@ -30,7 +30,7 @@ export default function AdminLogin() {
     <div className="flex min-h-screen items-center justify-center bg-field-cream px-4 py-8">
       <section className="card w-full max-w-md p-6 shadow-lift sm:p-8">
         <div className="mb-7 text-center">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-md bg-farm-800 text-white"><ShieldCheck className="h-8 w-8" /></span>
+          <BrandLogo size="large" iconOnly className="justify-center" />
           <h1 className="mt-4 text-2xl font-black text-farm-950">SmartFarm Admin</h1>
           <p className="mt-1 text-sm text-slate-500">Authorized administrators only</p>
         </div>

@@ -1,7 +1,8 @@
-import { BarChart3, Bug, LayoutDashboard, LogOut, ScrollText, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, Bug, LayoutDashboard, LogOut, ScrollText, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAdmin } from "../context/AdminContext";
 import { useAdminLightTheme } from "../utils/adminTheme";
+import BrandLogo from "./BrandLogo";
 
 const adminNav = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -27,7 +28,7 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-field-cream">
       <header className="sticky top-0 z-30 border-b border-farm-100 bg-white/95 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2 font-black text-farm-950"><ShieldCheck className="h-6 w-6" /> Admin</div>
+          <div className="flex items-center gap-2 font-black text-farm-950"><BrandLogo size="small" iconOnly /> Admin</div>
           <button className="btn-muted px-2" onClick={logout} aria-label="Admin logout"><LogOut className="h-5 w-5" /></button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3">{adminNav.map((item) => <AdminNavLink key={item.to} item={item} compact />)}</nav>
@@ -35,7 +36,7 @@ export default function AdminLayout() {
 
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-farm-100 bg-white p-5 lg:flex lg:flex-col">
         <div className="flex items-center gap-3 border-b border-farm-100 pb-5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-farm-800 text-white"><ShieldCheck className="h-5 w-5" /></span>
+          <BrandLogo size="medium" iconOnly />
           <div><div className="font-black text-farm-950">SmartFarm Admin</div><div className="text-xs font-semibold text-slate-500">Owner console</div></div>
         </div>
         <nav className="mt-6 space-y-1">{adminNav.map((item) => <AdminNavLink key={item.to} item={item} />)}</nav>
