@@ -17,11 +17,18 @@ export function recordForHealthForm(record) {
 
   return {
     ...record,
+    healthCondition: record.healthCondition || legacyHealthCondition(record.condition),
     animal: record.animal?._id || record.animal || "",
     recordDate: inputDate(record.recordDate),
     followUpDate: inputDate(record.followUpDate),
     medications
   };
+}
+
+function legacyHealthCondition(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"].includes(normalized)) return normalized;
+  return normalized === "sick" ? "moderate" : "unknown";
 }
 
 export function healthMedicationSummary(record) {

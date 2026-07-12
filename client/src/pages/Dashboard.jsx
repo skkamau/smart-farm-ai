@@ -152,7 +152,7 @@ function buildDailyReminders(data) {
       icon: Beef,
       priority: "high",
       title: `${totals.sickAnimals} sick animal${totals.sickAnimals === 1 ? "" : "s"}`,
-      detail: vetCase ? `${vetCase.animal?.animalId || "Animal"} - ${vetCase.condition}` : "Review health records and current animal health status.",
+      detail: vetCase ? `${vetCase.animal?.animalId || "Animal"} - ${statusLabel(vetCase.healthCondition)}${vetCase.diagnosis ? `: ${vetCase.diagnosis}` : ""}` : "Review health records and current animal health status.",
       to: "/health"
     });
   }
@@ -248,3 +248,5 @@ function PriorityBadge({ value }) {
   };
   return <span className={`badge ${tones[value] || tones.low}`}>{value}</span>;
 }
+
+function statusLabel(value) { return String(value || "unknown").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }

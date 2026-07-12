@@ -123,7 +123,7 @@ export async function listTransactions(req, res, next) {
     const transactions = await Transaction.find(query)
       .populate("crop", "name field plot expectedYield actualYield revenue")
       .populate("animal", "animalId name species")
-      .populate("healthRecord", "condition serviceType recordDate")
+      .populate("healthRecord", "healthCondition diagnosis serviceType recordDate")
       .populate("vaccinationRecord", "vaccineName dateGiven nextDueDate")
       .sort({ transactionDate: -1, createdAt: -1 });
     res.json(transactions);

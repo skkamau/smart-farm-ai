@@ -173,7 +173,7 @@ Phase 3 adds two protected record modules:
 
 Use the sidebar on desktop, or mobile menu, to open each module.
 
-Health records include animal, date, condition/disease, symptoms, diagnosis, multiple medications with dosage and charge, vet name, service charge, recovery status, and notes.
+Health records keep **Health Condition** separate from the veterinarian's free-text **Diagnosis**. Health Condition uses Healthy, Mild, Moderate, Serious, Critical, Recovering, Chronic, Stable, or Unknown and automatically updates the linked animal's shared health status. Symptoms and Diagnosis remain unrestricted text fields. Existing Condition / Disease records are migrated at server startup: status-like values become Health Condition values, while disease names are preserved as diagnoses without overwriting an existing diagnosis.
 
 Vaccination records include animal, vaccine name, date given, next due date, vet name, batch number, status, and notes.
 

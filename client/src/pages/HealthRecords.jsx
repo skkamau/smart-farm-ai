@@ -13,7 +13,7 @@ import { createMedicationRow, healthMedicationSummary, isNonNegativeNumber, reco
 const emptyRecord = {
   animal: "",
   recordDate: inputDate(new Date()),
-  condition: "",
+  healthCondition: "unknown",
   symptoms: "",
   diagnosis: "",
   medications: [createMedicationRow()],
@@ -29,6 +29,8 @@ const emptyRecord = {
 
 const serviceTypes = ["Vet consultation", "Vaccination", "Deworming", "Treatment", "Surgery", "Medicine", "Lab test", "Emergency visit", "Pregnancy check", "Artificial insemination", "Other"];
 const paymentMethods = ["Mpesa", "Bank Transfer", "Cash", "Other"];
+const healthConditions = ["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"];
+const conditionHealthStatus = { healthy: "healthy", mild: "sick", moderate: "sick", serious: "sick", critical: "sick", recovering: "recovering", chronic: "chronic", stable: "healthy", unknown: "unknown" };
 
 export default function HealthRecords() {
   const [records, setRecords] = useState([]);
@@ -49,7 +51,7 @@ export default function HealthRecords() {
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return records.filter((record) => [record.animal?.animalId, record.animal?.name, record.condition, record.vetName, record.animal?.healthStatus, record.animal?.lifecycleStatus].join(" ").toLowerCase().includes(term));
+    return records.filter((record) => [record.animal?.animalId, record.animal?.name, record.healthCondition, record.diagnosis, record.vetName, record.animal?.healthStatus, record.animal?.lifecycleStatus].join(" ").toLowerCase().includes(term));
   }, [records, search]);
 
   async function remove(id) {
@@ -71,7 +73,7 @@ export default function HealthRecords() {
         columns={[
           { key: "recordDate", label: "Date", render: (row) => formatDate(row.recordDate) },
           { key: "animal", label: "Animal", render: (row) => `${row.animal?.animalId || "Unknown"} ${row.animal?.name ? `- ${row.animal.name}` : ""}` },
-          { key: "condition", label: "Condition" },
+          { key: "healthCondition", label: "Health Condition", render: (row) => statusLabel(row.healthCondition) },
           { key: "diagnosis", label: "Diagnosis" },
           { key: "medications", label: "Medication", render: (row) => healthMedicationSummary(row) || "None" },
           { key: "vetName", label: "Vet", render: (row) => row.vetName || "Not set" },
@@ -154,7 +156,7 @@ function HealthModal({ record, animals, onClose, onSaved }) {
           <div><span className="label">Current reproductive status</span><div className="mt-2 font-bold text-slate-800">{statusLabel(selectedAnimal.reproductiveStatus)}</div></div>
           <div className="flex flex-wrap gap-2 sm:col-span-3">{selectedAnimal.lifecycleStatus !== "deceased" && <><LifecycleButton value="deceased" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="sold" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="transferred" animal={selectedAnimal} onUpdated={onSaved} /><LifecycleButton value="archived" animal={selectedAnimal} onUpdated={onSaved} /></>}{selectedAnimal.lifecycleStatus !== "active" && <LifecycleButton value="active" animal={selectedAnimal} onUpdated={onSaved} />}</div>
         </section>}
-        <Field label="Condition / disease" value={form.condition} onChange={(value) => setForm({ ...form, condition: value })} required />
+        <label className="space-y-1"><span className="label">Health Condition</span><select className="input" value={form.healthCondition || "unknown"} onChange={(event) => { const healthCondition = event.target.value; setForm({ ...form, healthCondition }); setCurrentHealthStatus(conditionHealthStatus[healthCondition]); }}>{healthConditions.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}</select></label>
         <label className="space-y-1">
           <span className="label">Health issue / service type</span>
           <select className="input" value={form.serviceType || "Vet consultation"} onChange={(event) => setForm({ ...form, serviceType: event.target.value })}>
@@ -167,7 +169,7 @@ function HealthModal({ record, animals, onClose, onSaved }) {
             <h3 className="font-bold text-farm-950">Diagnosis</h3>
             <p className="text-sm text-slate-500">Record the confirmed or suspected diagnosis.</p>
           </div>
-          <TextArea label="Diagnosis" value={form.diagnosis || ""} onChange={(value) => setForm({ ...form, diagnosis: value })} required />
+          <Field label="Diagnosis" value={form.diagnosis || ""} onChange={(value) => setForm({ ...form, diagnosis: value })} required />
         </section>
 
         <section className="space-y-4 rounded-lg border border-farm-100 bg-white p-4 sm:col-span-2">

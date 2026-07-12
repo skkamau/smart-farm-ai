@@ -14,7 +14,9 @@ const healthRecordSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     animal: { type: mongoose.Schema.Types.ObjectId, ref: "Animal", required: true, index: true },
     recordDate: { type: Date, required: true, default: Date.now },
-    condition: { type: String, required: true, trim: true },
+    healthCondition: { type: String, enum: ["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"], required: true, default: "unknown", index: true },
+    // Preserved for lossless reading of records created before healthCondition existed.
+    condition: { type: String, trim: true },
     symptoms: { type: String, trim: true },
     // API validation requires diagnosis on new saves; optional storage keeps legacy backups importable.
     diagnosis: { type: String, trim: true },

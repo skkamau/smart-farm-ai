@@ -171,7 +171,7 @@ export default function AnimalProfile() {
         <div className="mt-4 rounded-lg bg-field-cream p-4">
           <div className="label">Follow-up reminders</div>
           <div className="mt-2 text-sm text-slate-700">
-            {followUps.length ? followUps.map((record) => `${record.condition}: ${formatDate(record.followUpDate)}`).join(", ") : "No follow-up dates set."}
+            {followUps.length ? followUps.map((record) => `${statusLabel(record.healthCondition)}: ${formatDate(record.followUpDate)}`).join(", ") : "No follow-up dates set."}
           </div>
         </div>
       </section>
@@ -206,7 +206,7 @@ export default function AnimalProfile() {
             {(animal.healthRecords || []).map((record) => (
               <div key={record._id} className="rounded-lg border border-slate-100 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="font-bold text-slate-800">{record.condition}</div>
+                  <div className="font-bold text-slate-800">{statusLabel(record.healthCondition)}</div>
                   <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{animal.lifecycleStatus === "deceased" ? "Not applicable" : statusLabel(animal.healthStatus)}</span>
                 </div>
                 <div className="mt-1 text-xs text-slate-500">{formatDate(record.recordDate)} - {record.vetName || "Vet not set"}</div>

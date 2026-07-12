@@ -4,12 +4,13 @@ import jwt from "jsonwebtoken";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import { publicUser } from "./controllers/authController.js";
 import { createResetToken, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
-import { buildHealthPayload, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
+import { buildHealthPayload, conditionToAnimalHealth, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
 import User from "./models/User.js";
 import Animal from "./models/Animal.js";
 import HealthRecord from "./models/HealthRecord.js";
 import { animalRules } from "./controllers/animalController.js";
 import { legacyStatusMapping } from "./services/animalStatusMigration.js";
+import { migrateLegacyConditionValue } from "./services/healthConditionMigration.js";
 import { requireRole } from "./middleware/auth.js";
 import { signAdminToken, signToken } from "./utils/tokens.js";
 import { sanitizeAuditMetadata } from "./services/auditService.js";
@@ -55,7 +56,7 @@ try {
   );
   const validHealthErrors = await healthValidationErrors({
     animal: "507f1f77bcf86cd799439011",
-    condition: "Respiratory infection",
+    healthCondition: "moderate",
     diagnosis: "Bacterial infection",
     medications: [{ medicationName: "Medicine A", dosage: "5 ml", medicineCharge: 100 }],
     serviceCharge: 200,
@@ -64,12 +65,13 @@ try {
   assert.equal(validHealthErrors.length, 0, "a valid health record should pass server validation");
   const invalidHealthErrors = await healthValidationErrors({
     animal: "507f1f77bcf86cd799439011",
-    condition: "Respiratory infection",
+    healthCondition: "invalid",
     diagnosis: "",
     medications: [{ medicationName: "", dosage: "", medicineCharge: -1 }],
     serviceCharge: "not-a-number",
     followUpDate: "not-a-date"
   });
+  assert.equal(invalidHealthErrors.some((error) => error.path === "healthCondition"), true, "health condition must use the supported shared status mapping");
   assert.equal(invalidHealthErrors.some((error) => error.path === "diagnosis"), true, "diagnosis must be required");
   assert.equal(invalidHealthErrors.some((error) => error.path === "medications[0].medicineCharge"), true, "medicine charges must be non-negative numbers");
   assert.equal(invalidHealthErrors.some((error) => error.path === "serviceCharge"), true, "service charges must be numeric");
@@ -80,6 +82,12 @@ try {
   assert.deepEqual(Animal.schema.path("healthStatus").enumValues, ["healthy", "sick", "recovering", "chronic", "referred", "unknown"], "health statuses must be constrained");
   assert.deepEqual(Animal.schema.path("reproductiveStatus").enumValues, ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"], "reproductive statuses must be constrained");
   assert.equal(HealthRecord.schema.path("recoveryStatus"), undefined, "health records must not store duplicate recovery status");
+  assert.deepEqual(HealthRecord.schema.path("healthCondition").enumValues, ["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"], "health conditions must be constrained");
+  assert.deepEqual(conditionToAnimalHealth, { healthy: "healthy", mild: "sick", moderate: "sick", serious: "sick", critical: "sick", recovering: "recovering", chronic: "chronic", stable: "healthy", unknown: "unknown" }, "health conditions must map consistently to animal health status");
+  assert.deepEqual(migrateLegacyConditionValue("Healthy"), { healthCondition: "healthy", diagnosis: "" }, "legacy health labels should become health conditions");
+  assert.deepEqual(migrateLegacyConditionValue("Sick"), { healthCondition: "moderate", diagnosis: "" }, "legacy Sick records should map to a condition severity");
+  assert.deepEqual(migrateLegacyConditionValue("Mastitis"), { healthCondition: "unknown", diagnosis: "Mastitis" }, "legacy disease names should move into diagnosis");
+  assert.deepEqual(migrateLegacyConditionValue("Foot Rot", "Confirmed infection"), { healthCondition: "unknown", diagnosis: "Confirmed infection" }, "migration must not overwrite an existing diagnosis");
   assert.deepEqual(legacyStatusMapping("Healthy"), { lifecycleStatus: "active", healthStatus: "healthy", reproductiveStatus: "unknown" });
   assert.deepEqual(legacyStatusMapping("Sick"), { lifecycleStatus: "active", healthStatus: "sick", reproductiveStatus: "unknown" });
   assert.deepEqual(legacyStatusMapping("Pregnant"), { lifecycleStatus: "active", healthStatus: "unknown", reproductiveStatus: "pregnant" });

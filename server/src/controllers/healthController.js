@@ -3,10 +3,23 @@ import Animal from "../models/Animal.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 
+export const healthConditions = ["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"];
+export const conditionToAnimalHealth = {
+  healthy: "healthy",
+  mild: "sick",
+  moderate: "sick",
+  serious: "sick",
+  critical: "sick",
+  recovering: "recovering",
+  chronic: "chronic",
+  stable: "healthy",
+  unknown: "unknown"
+};
+
 export const healthRules = [
   body("animal").isMongoId().withMessage("Animal is required"),
   body("recordDate").optional({ values: "falsy" }).isISO8601().toDate(),
-  body("condition").trim().notEmpty().withMessage("Condition or disease is required"),
+  body("healthCondition").isIn(healthConditions).withMessage("Choose a valid health condition"),
   body("diagnosis").trim().notEmpty().withMessage("Diagnosis is required").isLength({ max: 2000 }),
   body("medications").optional().isArray({ max: 25 }).withMessage("Medications must be a list of up to 25 entries"),
   body("medications.*.medicationName").trim().notEmpty().withMessage("Medication name is required").isLength({ max: 200 }),
@@ -42,7 +55,7 @@ export function normalizeHealthMedications(body) {
 }
 
 export function buildHealthPayload(body) {
-  const allowed = ["animal", "recordDate", "condition", "symptoms", "diagnosis", "vetName", "serviceType", "serviceCharge", "transportCost", "otherCost", "paymentMethod", "followUpDate", "notes"];
+  const allowed = ["animal", "recordDate", "healthCondition", "symptoms", "diagnosis", "vetName", "serviceType", "serviceCharge", "transportCost", "otherCost", "paymentMethod", "followUpDate", "notes"];
   const out = allowed.reduce((acc, key) => {
     if (body[key] !== undefined) acc[key] = body[key];
     return acc;
@@ -59,6 +72,17 @@ export function buildHealthPayload(body) {
 async function assertAnimal(user, animalId) {
   const animal = await Animal.findOne({ _id: animalId, user });
   return animal;
+}
+
+async function syncAnimalHealthStatus(animal, healthCondition) {
+  if (!animal || animal.lifecycleStatus === "deceased") return;
+  const healthStatus = conditionToAnimalHealth[healthCondition];
+  if (healthStatus && animal.healthStatus !== healthStatus) {
+    animal.statusHistory.push({ from: animal.healthStatus, to: healthStatus, changedBy: animal.user, reason: `Health condition: ${healthCondition}` });
+    animal.healthStatus = healthStatus;
+    animal.statusChangedAt = new Date();
+    await animal.save();
+  }
 }
 
 function recordAfterDeath(animal, recordDate) {
@@ -80,13 +104,13 @@ async function syncHealthFinance(record, animal) {
     user: record.user,
     type: "expense",
     financeSection: "AnimalHealth",
-    category: record.serviceType || record.condition || "Vet/Health",
+    category: record.serviceType || record.healthCondition || "Vet/Health",
     animal: record.animal,
     healthRecord: record._id,
     source: "health",
     transactionDate: record.recordDate,
-    item: record.serviceType || record.condition || "Vet/Health",
-    description: `${animal.animalId}${animal.name ? ` - ${animal.name}` : ""}: ${record.condition}`,
+    item: record.serviceType || record.healthCondition || "Vet/Health",
+    description: `${animal.animalId}${animal.name ? ` - ${animal.name}` : ""}: ${record.diagnosis || record.healthCondition}`,
     amount: totalCost,
     totalCost,
     serviceCharge: record.serviceCharge,
@@ -126,6 +150,7 @@ export async function createHealthRecord(req, res, next) {
     if (recordAfterDeath(animal, req.body.recordDate)) return res.status(409).json({ message: "Health records cannot be dated after the animal's death" });
 
     const record = await HealthRecord.create({ ...buildHealthPayload(req.body), user: req.user._id });
+    await syncAnimalHealthStatus(animal, record.healthCondition);
     await syncHealthFinance(record, animal);
     res.status(201).json(await record.populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus dateOfDeath causeOfDeath customCauseOfDeath"));
   } catch (error) {
@@ -135,8 +160,9 @@ export async function createHealthRecord(req, res, next) {
 
 export async function updateHealthRecord(req, res, next) {
   try {
+    let animal = null;
     if (req.body.animal) {
-      const animal = await assertAnimal(req.user._id, req.body.animal);
+      animal = await assertAnimal(req.user._id, req.body.animal);
       if (!animal) return res.status(404).json({ message: "Animal not found" });
       if (recordAfterDeath(animal, req.body.recordDate)) return res.status(409).json({ message: "Health records cannot be dated after the animal's death" });
     }
@@ -145,6 +171,7 @@ export async function updateHealthRecord(req, res, next) {
       runValidators: true
     }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus dateOfDeath causeOfDeath customCauseOfDeath");
     if (!record) return res.status(404).json({ message: "Health record not found" });
+    await syncAnimalHealthStatus(animal || record.animal, record.healthCondition);
     await syncHealthFinance(record, record.animal);
     res.json(record);
   } catch (error) {
