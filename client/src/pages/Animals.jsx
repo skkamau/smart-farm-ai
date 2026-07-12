@@ -9,7 +9,7 @@ import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
 
-const emptyAnimal = { animalId: "", name: "", species: "", breed: "", gender: "Unknown", dateOfBirth: "", weight: "", location: "", lifecycleStatus: "active", healthStatus: "unknown", reproductiveStatus: "unknown", estimatedValue: "", notes: "", dateOfDeath: "", causeOfDeath: "Unknown", customCauseOfDeath: "", deathNotes: "", veterinaryConfirmation: "" };
+const emptyAnimal = { animalId: "", name: "", species: "", breed: "", gender: "Female", dateOfBirth: "", weight: "", location: "", lifecycleStatus: "active", healthStatus: "unknown", reproductiveStatus: "unknown", estimatedValue: "", notes: "", dateOfDeath: "", causeOfDeath: "Unknown", customCauseOfDeath: "", deathNotes: "", veterinaryConfirmation: "" };
 const lifecycleStatuses = ["active", "sold", "transferred", "archived", "deceased"];
 const healthStatuses = ["healthy", "sick", "recovering", "chronic", "referred", "unknown"];
 const reproductiveStatuses = ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"];
@@ -69,7 +69,7 @@ export default function Animals() {
         actions={(row) => (
           <div className="flex justify-end gap-2">
             <button className="btn-muted px-2" onClick={() => navigate(`/animals/${row._id}`)} aria-label="View animal"><Eye className="h-4 w-4" /></button>
-            <button className="btn-muted px-2" onClick={() => setEditing({ ...row, dateOfBirth: inputDate(row.dateOfBirth), dateOfDeath: inputDate(row.dateOfDeath) })} aria-label="Edit animal"><Edit className="h-4 w-4" /></button>
+            <button className="btn-muted px-2" onClick={() => setEditing({ ...row, gender: row.gender === "Male" ? "Male" : "Female", dateOfBirth: inputDate(row.dateOfBirth), dateOfDeath: inputDate(row.dateOfDeath) })} aria-label="Edit animal"><Edit className="h-4 w-4" /></button>
             <button className="btn-muted px-2 text-red-700" onClick={() => remove(row._id)} aria-label="Delete animal"><Trash2 className="h-4 w-4" /></button>
           </div>
         )}
@@ -111,7 +111,7 @@ function AnimalModal({ animal, onClose, onSaved }) {
 
   async function submit(event) {
     event.preventDefault();
-    const payload = { ...form, weight: Number(form.weight || 0), estimatedValue: Number(form.estimatedValue || 0) };
+    const payload = { ...form, gender: form.gender === "Male" ? "Male" : "Female", weight: Number(form.weight || 0), estimatedValue: Number(form.estimatedValue || 0) };
     if (isEdit && animal.lifecycleStatus !== form.lifecycleStatus) {
       if (!confirm(`Change lifecycle status from ${labelStatus(animal.lifecycleStatus)} to ${labelStatus(form.lifecycleStatus)}?`)) return;
       payload.confirmLifecycleChange = true;
@@ -134,7 +134,7 @@ function AnimalModal({ animal, onClose, onSaved }) {
         <Field label="Name" value={form.name || ""} onChange={(v) => setForm({ ...form, name: v })} />
         <Field label="Species" value={form.species} onChange={(v) => setForm({ ...form, species: v })} required />
         <Field label="Breed" value={form.breed || ""} onChange={(v) => setForm({ ...form, breed: v })} />
-        <Select label="Gender" value={form.gender} onChange={(v) => setForm({ ...form, gender: v })} options={["Female", "Male", "Unknown"]} />
+        <Select label="Gender" value={form.gender === "Male" ? "Male" : "Female"} onChange={(v) => setForm({ ...form, gender: v })} options={["Female", "Male"]} />
         <Field label="Date of Birth" type="date" value={form.dateOfBirth || ""} onChange={(v) => setForm({ ...form, dateOfBirth: v })} />
         <Field label="Weight (kg)" type="number" value={form.weight} onChange={(v) => setForm({ ...form, weight: v })} />
         <Field label="Location" value={form.location || ""} onChange={(v) => setForm({ ...form, location: v })} />

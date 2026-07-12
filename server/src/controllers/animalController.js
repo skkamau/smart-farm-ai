@@ -17,6 +17,7 @@ export const reproductiveStatuses = ["not_pregnant", "pregnant", "postpartum", "
 export const animalRules = [
   body("animalId").trim().notEmpty().withMessage("Animal ID is required"),
   body("species").trim().notEmpty().withMessage("Species is required"),
+  body("gender").optional({ values: "falsy" }).isIn(["Female", "Male"]).withMessage("Choose Female or Male"),
   body("weight").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("estimatedValue").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("status").optional().isIn(animalStatuses).withMessage("Choose a valid animal status"),

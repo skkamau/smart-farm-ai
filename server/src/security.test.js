@@ -10,6 +10,7 @@ import Animal from "./models/Animal.js";
 import HealthRecord from "./models/HealthRecord.js";
 import { animalRules } from "./controllers/animalController.js";
 import { legacyStatusMapping } from "./services/animalStatusMigration.js";
+import { unknownGenderFilter } from "./services/animalGenderMigration.js";
 import { migrateLegacyConditionValue } from "./services/healthConditionMigration.js";
 import { requireRole } from "./middleware/auth.js";
 import { signAdminToken, signToken } from "./utils/tokens.js";
@@ -81,6 +82,8 @@ try {
   assert.deepEqual(Animal.schema.path("lifecycleStatus").enumValues, ["active", "sold", "transferred", "archived", "deceased"], "lifecycle statuses must be constrained");
   assert.deepEqual(Animal.schema.path("healthStatus").enumValues, ["healthy", "sick", "recovering", "chronic", "referred", "unknown"], "health statuses must be constrained");
   assert.deepEqual(Animal.schema.path("reproductiveStatus").enumValues, ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"], "reproductive statuses must be constrained");
+  assert.equal(Animal.schema.path("gender").defaultValue, "Female", "new animals should default to Female");
+  assert.equal(unknownGenderFilter.$or.length, 4, "gender migration must include unknown, blank, null, and missing values");
   assert.equal(HealthRecord.schema.path("recoveryStatus"), undefined, "health records must not store duplicate recovery status");
   assert.deepEqual(HealthRecord.schema.path("healthCondition").enumValues, ["healthy", "mild", "moderate", "serious", "critical", "recovering", "chronic", "stable", "unknown"], "health conditions must be constrained");
   assert.deepEqual(conditionToAnimalHealth, { healthy: "healthy", mild: "sick", moderate: "sick", serious: "sick", critical: "sick", recovering: "recovering", chronic: "chronic", stable: "healthy", unknown: "unknown" }, "health conditions must map consistently to animal health status");
@@ -98,6 +101,10 @@ try {
   assert.equal(invalidDeathStatus.some((error) => error.path === "status"), true, "invalid animal statuses must be rejected");
   const invalidDeathCause = await animalValidationErrors({ animalId: "G-001", species: "Goat", status: "Deceased", dateOfDeath: "2026-07-12", causeOfDeath: "Unlisted" });
   assert.equal(invalidDeathCause.some((error) => error.path === "causeOfDeath"), true, "invalid death causes must be rejected");
+  const validFemaleGender = await animalValidationErrors({ animalId: "G-003", species: "Goat", gender: "Female" });
+  assert.equal(validFemaleGender.some((error) => error.path === "gender"), false, "Female must remain a valid animal gender");
+  const invalidUnknownGender = await animalValidationErrors({ animalId: "G-004", species: "Goat", gender: "Unknown" });
+  assert.equal(invalidUnknownGender.some((error) => error.path === "gender"), true, "new Unknown animal genders must be rejected");
   const otherWithoutDetail = new Animal({ user: "507f1f77bcf86cd799439011", animalId: "G-002", species: "Goat", status: "Deceased", dateOfDeath: new Date(), causeOfDeath: "Other" });
   const otherCauseError = await otherWithoutDetail.validate().then(() => null).catch((error) => error);
   assert.equal(Boolean(otherCauseError?.errors?.customCauseOfDeath), true, "Other death causes must include custom details");
