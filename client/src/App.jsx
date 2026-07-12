@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import AdminLayout from "./components/AdminLayout";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AppOpeningGate from "./components/AppOpeningGate";
 import AnimalProfile from "./pages/AnimalProfile";
 import Animals from "./pages/Animals";
 import Alerts from "./pages/Alerts";
@@ -16,6 +17,7 @@ import Feedback from "./pages/Feedback";
 import ForgotPassword from "./pages/ForgotPassword";
 import HealthRecords from "./pages/HealthRecords";
 import More from "./pages/More";
+import Onboarding from "./pages/Onboarding";
 import Reports from "./pages/Reports";
 import ResetPassword from "./pages/ResetPassword";
 import Scanner from "./pages/Scanner";
@@ -32,7 +34,8 @@ import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
-    <Routes>
+    <AppOpeningGate><Routes>
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/login" element={<Auth mode="login" />} />
       <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -77,6 +80,6 @@ export default function App() {
         <Route path="feedback" element={<Feedback />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></AppOpeningGate>
   );
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Manage your farm</title><desc id="desc">A farmer using a tablet beside livestock, crops, and a barn.</desc>
+  <rect width="640" height="360" rx="28" fill="#eef8f2"/><path d="M0 280c90-54 170-52 252-8 92 49 188 48 388-18v106H0Z" fill="#b9df82"/>
+  <circle cx="530" cy="66" r="34" fill="#f8cc4b"/><path d="M455 140V66l76-48 76 48v126H455Z" fill="#d97745"/><path d="M478 192v-81h52v81" fill="#75452f"/><path d="M549 80h34v35h-34z" fill="#d9f1f1"/>
+  <path d="M75 275c0-62 20-109 58-140 38 31 58 78 58 140" fill="#4ea85b"/><path d="M97 275c0-46 12-81 36-106 24 25 36 60 36 106" fill="#267243"/>
+  <circle cx="270" cy="102" r="35" fill="#bd7d52"/><path d="M233 92c12-44 68-51 85-7l-35 7-50 0Z" fill="#155b3c"/><path d="M245 135h52l24 120h-97Z" fill="#2d7b4d"/><path d="m244 160-55 58 18 17 51-43m37-32 50 46-16 18-44-34" fill="none" stroke="#bd7d52" stroke-width="16" stroke-linecap="round"/>
+  <rect x="306" y="174" width="63" height="49" rx="7" fill="#173c32" transform="rotate(-8 306 174)"/><rect x="315" y="181" width="45" height="32" rx="3" fill="#d8f0e6" transform="rotate(-8 315 181)"/>
+  <path d="M378 246h80c24 0 40 14 40 34h-21l-9 34h-12l-5-33h-52l-8 33h-12l-5-47-20-10 8-17 16 6Z" fill="#fff" stroke="#285542" stroke-width="5"/><circle cx="479" cy="257" r="4" fill="#173c32"/>
+  <g fill="#f1c84a" stroke="#267243" stroke-width="5"><path d="M35 329c10-37 21-37 31 0"/><path d="M73 329c10-46 21-46 31 0"/><path d="M111 329c10-39 21-39 31 0"/></g>
+</svg>

@@ -1,6 +1,7 @@
-import { Bell, Check, Mail, Moon, Phone, Save, Sun, UserRound } from "lucide-react";
+import { Bell, Check, Mail, Moon, Phone, PlayCircle, Save, Sun, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import BrandLogo from "../components/BrandLogo";
@@ -56,6 +57,7 @@ function Toggle({ checked, label, description, onChange }) {
 
 export default function Settings() {
   const { user, updateProfile, applyTheme } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState(() => initialForm(user));
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -174,6 +176,14 @@ export default function Settings() {
             </div>
           </label>
         </div>
+      </section>
+
+      <section className="card flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+        <div>
+          <h2 className="font-black text-farm-950 dark:text-white">App Introduction</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Review the three-screen guide without signing out or changing your saved preferences.</p>
+        </div>
+        <button type="button" className="btn-muted shrink-0" onClick={() => navigate("/onboarding?replay=1")}><PlayCircle className="h-4 w-4" /> View App Introduction Again</button>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">

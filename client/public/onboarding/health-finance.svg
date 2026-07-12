@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Track health and finance</title><desc id="desc">A veterinary clipboard, medicine, finance chart, and farm expense records.</desc>
+  <rect width="640" height="360" rx="28" fill="#eef8f2"/><ellipse cx="318" cy="321" rx="250" ry="25" fill="#d6ebc3"/>
+  <rect x="82" y="55" width="235" height="255" rx="22" fill="#fff" stroke="#8bbd9b" stroke-width="7"/><rect x="145" y="34" width="109" height="42" rx="15" fill="#356f55"/><circle cx="200" cy="52" r="8" fill="#d9eee2"/>
+  <path d="M125 124h42v-34h34v34h42v33h-42v39h-34v-39h-42Z" fill="#4eaa63"/><path d="M130 228h133M130 259h102" stroke="#9ab8a6" stroke-width="12" stroke-linecap="round"/>
+  <rect x="354" y="62" width="210" height="180" rx="18" fill="#fff" stroke="#d7e6dc" stroke-width="6"/><path d="m384 191 43-48 41 20 60-67" fill="none" stroke="#55a85e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><path d="m513 96 20-5-4 21" fill="none" stroke="#55a85e" stroke-width="8"/>
+  <rect x="334" y="210" width="72" height="103" rx="12" fill="#b97949"/><rect x="345" y="190" width="50" height="27" rx="7" fill="#f8faf7" stroke="#356f55" stroke-width="5"/><rect x="344" y="243" width="52" height="35" rx="6" fill="#eef8f2"/><path d="M360 260h20" stroke="#4eaa63" stroke-width="7"/>
+  <g fill="#e7b83f" stroke="#bb8d22" stroke-width="4"><ellipse cx="476" cy="285" rx="43" ry="14"/><ellipse cx="476" cy="270" rx="43" ry="14"/><ellipse cx="476" cy="255" rx="43" ry="14"/><ellipse cx="540" cy="300" rx="43" ry="14"/><ellipse cx="540" cy="285" rx="43" ry="14"/></g>
+</svg>

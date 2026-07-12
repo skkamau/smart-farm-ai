@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Make better decisions</title><desc id="desc">A mobile farm dashboard with analytics, weather, reminders, and a farm landscape.</desc>
+  <rect width="640" height="360" rx="28" fill="#eef8f2"/><circle cx="515" cy="80" r="39" fill="#f7c84a"/><g fill="#a9d3e8"><circle cx="457" cy="91" r="31"/><circle cx="495" cy="99" r="39"/><rect x="430" y="98" width="105" height="34" rx="17"/></g><g stroke="#68acd0" stroke-width="7" stroke-linecap="round"><path d="m450 150-8 17m35-17-8 17m35-17-8 17"/></g>
+  <path d="M0 286c80-67 168-62 254-11 84 49 191 41 386-25v110H0Z" fill="#b6df86"/><path d="M0 320c123-47 241-40 355 21H0Z" fill="#65bd5a"/>
+  <rect x="181" y="31" width="227" height="305" rx="35" fill="#1f5742"/><rect x="199" y="57" width="191" height="248" rx="17" fill="#fff"/><rect x="259" y="43" width="72" height="8" rx="4" fill="#9fc9b1"/>
+  <rect x="218" y="80" width="153" height="57" rx="12" fill="#e8f4ec"/><path d="m235 120 28-21 24 11 30-31 35 18" fill="none" stroke="#4fa45d" stroke-width="7" stroke-linecap="round"/>
+  <g fill="#d8ebde"><rect x="218" y="153" width="70" height="57" rx="10"/><rect x="301" y="153" width="70" height="57" rx="10"/><rect x="218" y="223" width="153" height="62" rx="10"/></g><circle cx="253" cy="181" r="13" fill="#57ad65"/><path d="M326 185h22m-11-11v22" stroke="#57ad65" stroke-width="7" stroke-linecap="round"/><path d="M236 266h117" stroke="#79b887" stroke-width="8" stroke-linecap="round"/>
+  <path d="M455 225c0-30 16-48 42-48s42 18 42 48v32l17 19h-118l17-19Z" fill="#4d9f59"/><circle cx="497" cy="290" r="13" fill="#2e7147"/>
+</svg>
