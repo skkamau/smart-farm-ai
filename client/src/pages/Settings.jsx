@@ -1,4 +1,4 @@
-import { Bell, Check, Mail, Moon, Phone, PlayCircle, Save, Sun, UserRound } from "lucide-react";
+import { Bell, Bug, Check, Lightbulb, LifeBuoy, Mail, Moon, Phone, PlayCircle, Save, Sun, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -184,6 +184,18 @@ export default function Settings() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Review the three-screen guide without signing out or changing your saved preferences.</p>
         </div>
         <button type="button" className="btn-muted shrink-0" onClick={() => navigate("/onboarding?replay=1")}><PlayCircle className="h-4 w-4" /> View App Introduction Again</button>
+      </section>
+
+      <section className="card p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-field-sage text-farm-800 dark:bg-farm-800 dark:text-field-sage"><LifeBuoy className="h-5 w-5" /></span>
+          <div><h2 className="font-black text-farm-950 dark:text-white">Help & Support</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Contact Smart Farm AI at <a className="font-bold text-farm-800 dark:text-lime-300" href="mailto:smartfarm005ai@gmail.com">smartfarm005ai@gmail.com</a>.</p></div>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <button type="button" className="btn-muted" onClick={() => navigate("/feedback?type=Account%20issue")}><Mail className="h-4 w-4" /> Contact Support</button>
+          <button type="button" className="btn-muted" onClick={() => navigate("/feedback?type=Bug")}><Bug className="h-4 w-4" /> Report a Problem</button>
+          <button type="button" className="btn-muted" onClick={() => navigate("/feedback?type=Feature%20request")}><Lightbulb className="h-4 w-4" /> Suggest a Feature</button>
+        </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1fr_1fr]">

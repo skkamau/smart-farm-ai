@@ -141,15 +141,18 @@ CLIENT_URL=http://localhost:5173
 Password reset emails also need the frontend URL and SMTP settings in `server/.env` or Render:
 
 ```bash
-APP_URL=http://localhost:5173
-SMTP_HOST=smtp.example.com
+APP_URL=https://smart-farm-ai-two.vercel.app
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_password
-SMTP_FROM="Smart Farm AI <no-reply@example.com>"
+SMTP_USER=smartfarm005ai@gmail.com
+SMTP_PASSWORD=your_google_app_password
+EMAIL_FROM="Smart Farm AI <smartfarm005ai@gmail.com>"
+SUPPORT_EMAIL=smartfarm005ai@gmail.com
 ```
 
-If SMTP is not configured, reset links are logged only in development for testing and are not exposed to users.
+Use a Google App Password, never the normal Gmail password. Configure these values only in `server/.env` locally or Render Environment settings. The frontend may use `VITE_SUPPORT_EMAIL=smartfarm005ai@gmail.com`; it must never receive `SMTP_PASSWORD`. If SMTP is not configured, the API returns the same safe reset response but does not expose reset links or account existence.
+
+Support requests are available under `Profile & Settings > Help & Support`. They are saved to MongoDB, shown in the admin Reports area, rate limited, deduplicated, and emailed to the configured `SUPPORT_EMAIL` when SMTP is available.
 
 If Vite starts on another port because `5173` is busy, update `CLIENT_URL`, restart the API, and edit or reload animal records so QR links use the desired frontend URL.
 

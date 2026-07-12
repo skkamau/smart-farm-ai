@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 export const resetTokenTtlMs = 30 * 60 * 1000;
 export const resetCooldownMs = 60 * 1000;
-export const genericResetMessage = "If an account exists with this email, a password reset link has been sent.";
+export const genericResetMessage = "If an account exists for this email, a password reset link has been sent.";
 
 export function createResetToken() {
   const token = crypto.randomBytes(32).toString("hex");

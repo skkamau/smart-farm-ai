@@ -15,7 +15,7 @@ const bugReportSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     reportType: {
       type: String,
-      enum: ["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Other"],
+      enum: ["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Payment issue", "Other"],
       required: true,
       index: true
     },
@@ -37,5 +37,6 @@ const bugReportSchema = new mongoose.Schema(
 
 bugReportSchema.index({ createdAt: -1 });
 bugReportSchema.index({ status: 1, createdAt: -1 });
+bugReportSchema.index({ user: 1, createdAt: -1 });
 
 export default mongoose.model("BugReport", bugReportSchema);

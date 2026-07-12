@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import api from "../services/api";
 import BrandLogo from "../components/BrandLogo";
 
-const genericMessage = "If an account exists with this email, a password reset link has been sent.";
+const genericMessage = "If an account exists for this email, a password reset link has been sent.";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

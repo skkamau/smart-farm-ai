@@ -3,7 +3,7 @@ import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import { publicUser } from "./controllers/authController.js";
-import { createResetToken, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
+import { createResetToken, genericResetMessage, hashResetToken, isStrongPassword } from "./utils/passwordReset.js";
 import { buildHealthPayload, conditionToAnimalHealth, healthRules, normalizeHealthMedications } from "./controllers/healthController.js";
 import User from "./models/User.js";
 import Animal from "./models/Animal.js";
@@ -15,6 +15,8 @@ import { migrateLegacyConditionValue } from "./services/healthConditionMigration
 import { requireRole } from "./middleware/auth.js";
 import { signAdminToken, signToken } from "./utils/tokens.js";
 import { sanitizeAuditMetadata } from "./services/auditService.js";
+import { defaultSupportEmail, smtpConfigured } from "./services/mailService.js";
+import BugReport from "./models/BugReport.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -38,6 +40,21 @@ try {
   assert.equal(reset.token.length, 64, "raw reset token should be 32 random bytes encoded as hex");
   assert.equal(reset.tokenHash, hashResetToken(reset.token), "stored reset hash should match raw token hash");
   assert.notEqual(reset.token, reset.tokenHash, "raw reset tokens must not be stored directly");
+  assert.equal(genericResetMessage, "If an account exists for this email, a password reset link has been sent.", "reset requests must use the non-enumerating response");
+  assert.equal(defaultSupportEmail, "smartfarm005ai@gmail.com", "official support email must be consistent");
+  assert.equal(smtpConfigured({ SMTP_HOST: "smtp.gmail.com", SMTP_USER: "support@example.test", SMTP_PASSWORD: "app-password" }), true, "SMTP_PASSWORD configuration must be supported");
+  assert.equal(smtpConfigured({ SMTP_HOST: "smtp.gmail.com", SMTP_USER: "support@example.test" }), false, "partial SMTP configuration must not send mail");
+  assert.equal(BugReport.schema.path("reportType").enumValues.includes("Payment issue"), true, "support reports must include payment issues");
+
+  process.env.NODE_ENV = "development";
+  process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";
+  process.env.JWT_SECRET = "a".repeat(32);
+  process.env.SMTP_HOST = "smtp.gmail.com";
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASSWORD;
+  delete process.env.SMTP_PASS;
+  assert.throws(() => validateEnv(), /configured together/, "partial SMTP configuration must fail fast");
+  delete process.env.SMTP_HOST;
 
   const healthPayload = buildHealthPayload({
     serviceCharge: 500,

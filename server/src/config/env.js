@@ -23,6 +23,11 @@ export function validateEnv() {
   if (process.env.NODE_ENV === "production" && String(process.env.JWT_SECRET).length < 32) {
     throw new Error("JWT_SECRET must be at least 32 characters in production");
   }
+
+  const smtpFields = [process.env.SMTP_HOST, process.env.SMTP_USER, process.env.SMTP_PASSWORD || process.env.SMTP_PASS];
+  if (smtpFields.some(Boolean) && !smtpFields.every(Boolean)) {
+    throw new Error("SMTP_HOST, SMTP_USER, and SMTP_PASSWORD must be configured together");
+  }
 }
 
 export function allowedOrigins() {

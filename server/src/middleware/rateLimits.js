@@ -45,6 +45,14 @@ export const sensitiveApiLimiter = rateLimit({
   handler: standardHandler
 });
 
+export const supportRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: standardHandler
+});
+
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,

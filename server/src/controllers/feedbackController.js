@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import BugReport from "../models/BugReport.js";
+import { sendSupportConfirmationEmail, sendSupportNotificationEmail } from "../services/mailService.js";
 
-const reportTypes = new Set(["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Other"]);
+const reportTypes = new Set(["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Payment issue", "Other"]);
 const uploadRoot = path.resolve("uploads");
 
 function storedFilePath(storedName) {
@@ -33,6 +34,18 @@ export async function createBugReport(req, res, next) {
       return res.status(400).json({ message: "Description must be between 10 and 5000 characters" });
     }
 
+    const duplicate = await BugReport.exists({
+      user: req.user._id,
+      reportType,
+      title,
+      description,
+      createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+    });
+    if (duplicate) {
+      await removeUploadedFile(req.file);
+      return res.status(409).json({ message: "This support request was already submitted recently." });
+    }
+
     const report = await BugReport.create({
       user: req.user._id,
       reportType,
@@ -45,7 +58,13 @@ export async function createBugReport(req, res, next) {
         size: req.file.size
       } : null
     });
-    res.status(201).json(report);
+    const user = { name: req.user.name, email: req.user.email, farmName: req.user.farmName };
+    const mailResults = await Promise.allSettled([
+      sendSupportNotificationEmail({ report, user }),
+      sendSupportConfirmationEmail({ report, user })
+    ]);
+    if (mailResults.some((result) => result.status === "rejected")) console.warn("[support] One or more support emails could not be sent", { reportId: report._id });
+    res.status(201).json({ ...report.toObject(), message: "Your support request has been received." });
   } catch (error) {
     await removeUploadedFile(req.file).catch(() => {});
     next(error);

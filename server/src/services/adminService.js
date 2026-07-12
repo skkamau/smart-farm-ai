@@ -138,7 +138,7 @@ export async function adminReportsData({ search = "", status = "", reportType = 
     query.$or = [{ title: regex }, { description: regex }];
   }
   if (["New", "Reviewing", "In progress", "Resolved", "Rejected"].includes(status)) query.status = status;
-  if (["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Other"].includes(reportType)) query.reportType = reportType;
+    if (["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Payment issue", "Other"].includes(reportType)) query.reportType = reportType;
   return BugReport.find(query)
     .populate("user", "name email farmName")
     .populate("lastUpdatedBy", "name email")

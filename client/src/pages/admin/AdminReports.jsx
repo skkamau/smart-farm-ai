@@ -8,7 +8,7 @@ import { formatDate } from "../../utils";
 import { AdminPageHeader, downloadAdminCsv, downloadAdminScreenshot, StatusBadge } from "../../utils/admin";
 
 const statuses = ["New", "Reviewing", "In progress", "Resolved", "Rejected"];
-const types = ["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Other"];
+const types = ["Bug", "Suggestion", "Feature request", "Account issue", "Data issue", "Payment issue", "Other"];
 
 export default function AdminReports() {
   const [reports, setReports] = useState([]);
