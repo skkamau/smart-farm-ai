@@ -4,9 +4,11 @@ import BirthRecord from "../models/BirthRecord.js";
 import BreedingRecord from "../models/BreedingRecord.js";
 import HealthRecord from "../models/HealthRecord.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import VaccinationCampaign from "../models/VaccinationCampaign.js";
 import { ensureAnimalQr, extractQrCodeId } from "../utils/qr.js";
 import { normalizeVaccination } from "../utils/vaccinations.js";
 import { logActivity } from "../services/auditService.js";
+import { campaignHistoryRecord } from "../utils/vaccinationCampaignViews.js";
 
 const animalStatuses = ["Healthy", "Sick", "Pregnant", "Sold", "Transferred", "Archived", "Deceased"];
 const deathCauses = ["Disease", "Injury", "Accident", "Birth complications", "Old age", "Predation", "Poisoning", "Unknown", "Other"];
@@ -93,9 +95,10 @@ export async function getAnimal(req, res, next) {
     if (!animal) return res.status(404).json({ message: "Animal not found" });
     await ensureAnimalQr(animal);
     await animal.populate("deathRecordedBy", "name email");
-    const [healthRecords, vaccinationRecords] = await Promise.all([
+    const [healthRecords, vaccinationRecords, vaccinationCampaigns] = await Promise.all([
       HealthRecord.find({ animal: animal._id, user: req.user._id }).sort({ recordDate: -1 }),
-      VaccinationRecord.find({ animal: animal._id, user: req.user._id }).sort({ nextDueDate: 1, dateGiven: -1 })
+      VaccinationRecord.find({ animal: animal._id, user: req.user._id }).sort({ nextDueDate: 1, dateGiven: -1 }),
+      VaccinationCampaign.find({ user: req.user._id, "assignments.animal": animal._id }).sort({ scheduledDate: 1 })
     ]);
     const siblingQuery = [
       ...(animal.mother ? [{ mother: animal.mother }] : []),
@@ -119,7 +122,12 @@ export async function getAnimal(req, res, next) {
         .sort({ birthDate: -1 })
     ]);
     const normalizedVaccinations = await Promise.all(vaccinationRecords.map((record) => normalizeVaccination(record)));
-    const applicableVaccinations = animal.lifecycleStatus === "deceased" ? [] : normalizedVaccinations;
+    const campaignVaccinations = vaccinationCampaigns.map((campaign) => {
+      const assignment = campaign.assignments.find((item) => String(item.animal) === String(animal._id));
+      return campaignHistoryRecord(campaign, assignment);
+    });
+    const allVaccinations = [...normalizedVaccinations.map((record) => record.toObject()), ...campaignVaccinations];
+    const applicableVaccinations = animal.lifecycleStatus === "deceased" ? [] : allVaccinations;
     res.json({
       ...animal.toObject(),
       family: {
@@ -132,7 +140,7 @@ export async function getAnimal(req, res, next) {
       breedingRecords,
       birthRecords,
       healthRecords,
-      vaccinationRecords: normalizedVaccinations,
+      vaccinationRecords: allVaccinations,
       upcomingVaccinations: applicableVaccinations.filter((record) => record.status === "upcoming"),
       overdueVaccinations: applicableVaccinations.filter((record) => record.status === "overdue")
     });

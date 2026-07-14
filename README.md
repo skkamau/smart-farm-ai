@@ -422,6 +422,16 @@ Health records no longer store a recovery/case status. Health & Vet reads and ed
 
 At API startup, an idempotent migration maps older mixed `status` values to the three fields. It only updates records where one or more normalized fields are missing, so rerunning it is safe. The legacy `status` property remains temporarily readable for backup compatibility but is no longer used by current dashboards, forms, reports, exports, QR profiles, reminders, or workflows.
 
+## Vaccination Campaigns
+
+Vaccination & Prevention supports Sheep, Goat, Cattle, Poultry, Pig, Rabbit, Fish, Dog, and custom species schedules. The original sheep and goat reference programmes remain available as protected system templates. They are guidance only and should be confirmed with a qualified veterinarian.
+
+New schedules use one `VaccinationCampaign` with embedded target assignments. Each assignment links to either an owned `Animal` or `AnimalGroup`, stores its own completion status, and records a treated quantity for groups. Legacy `VaccinationRecord` documents remain readable and editable without migration.
+
+Campaign status is calculated from assignment completion and the scheduled date. Completing some targets produces `partially_completed`; completing all produces `completed`. Upcoming and overdue campaigns appear on the Dashboard, Health page, Animal profiles, and Group profiles.
+
+Campaign costs create or update one linked Finance transaction. A vaccine inventory item can be selected from current stock. Stock is never deducted when a schedule is created; one guarded stock movement is created only after administration is recorded, and repeated completion updates cannot deduct it twice.
+
 ## GitHub
 
 This folder is ready to commit and push.

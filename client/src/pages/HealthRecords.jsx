@@ -1,6 +1,7 @@
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { BellRing, Edit, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 import CrudModal from "../components/CrudModal";
 import DataTable from "../components/DataTable";
 import DocumentManager from "../components/DocumentManager";
@@ -35,14 +36,16 @@ const conditionHealthStatus = { healthy: "healthy", mild: "sick", moderate: "sic
 export default function HealthRecords() {
   const [records, setRecords] = useState([]);
   const [animals, setAnimals] = useState([]);
+  const [vaccinationCampaigns, setVaccinationCampaigns] = useState([]);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
 
   function load() {
-    Promise.all([api.get("/health-records"), api.get("/animals")])
-      .then(([healthRes, animalRes]) => {
+    Promise.all([api.get("/health-records"), api.get("/animals"), api.get("/vaccinations/campaigns")])
+      .then(([healthRes, animalRes, vaccinationRes]) => {
         setRecords(healthRes.data);
         setAnimals(animalRes.data);
+        setVaccinationCampaigns(vaccinationRes.data);
       })
       .catch(() => toast.error("Could not load health records"));
   }
@@ -64,6 +67,7 @@ export default function HealthRecords() {
   return (
     <div>
       <PageHeader title="Health & Vet Records" eyebrow="Animal care" action={<div className="flex flex-wrap gap-2"><ExportButtons type="health" basename="health_vet_records" /><button className="btn-primary" onClick={() => setEditing(emptyRecord)}><Plus className="h-4 w-4" /> Add record</button></div>} />
+      {vaccinationCampaigns.some((campaign) => ["due_soon", "overdue"].includes(campaign.status)) && <section className="card mb-5 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 text-amber-700"><BellRing className="h-5 w-5" /></span><div><h2 className="font-black text-farm-950">Vaccination reminders</h2><p className="text-sm text-slate-500">{vaccinationCampaigns.filter((campaign) => ["due_soon", "overdue"].includes(campaign.status)).length} campaign(s) need attention.</p></div></div><Link className="btn-muted" to="/vaccinations">Open vaccinations</Link></div></section>}
       <div className="mb-4 max-w-lg">
         <input className="input" placeholder="Search by animal, condition, vet, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>

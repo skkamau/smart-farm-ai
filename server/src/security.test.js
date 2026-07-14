@@ -20,6 +20,11 @@ import BugReport from "./models/BugReport.js";
 import AnimalGroup, { calculateBiomass } from "./models/AnimalGroup.js";
 import GroupQuantityEvent from "./models/GroupQuantityEvent.js";
 import { nextGroupQuantity } from "./services/groupQuantityService.js";
+import VaccinationCampaign from "./models/VaccinationCampaign.js";
+import VaccinationTemplate from "./models/VaccinationTemplate.js";
+import Transaction from "./models/Transaction.js";
+import { buildCampaignPayload, campaignRules } from "./controllers/vaccinationCampaignController.js";
+import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCampaignStatus, systemVaccinationTemplates } from "./services/vaccinationCampaignService.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -30,6 +35,12 @@ async function healthValidationErrors(body) {
 async function animalValidationErrors(body) {
   const request = { body };
   await Promise.all(animalRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
+
+async function campaignValidationErrors(body) {
+  const request = { body };
+  await Promise.all(campaignRules.map((rule) => rule.run(request)));
   return validationResult(request).array();
 }
 
@@ -45,6 +56,26 @@ try {
   assert.equal(calculateBiomass(4000, 250, "g"), 1000, "fish biomass must convert sampled grams to kilograms");
   assert.equal(AnimalGroup.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.groupId === 1 && options.unique), true, "group IDs must be unique per owner");
   assert.equal(GroupQuantityEvent.schema.indexes().some(([fields, options]) => fields.idempotencyKey === 1 && options.unique), true, "quantity events must reject duplicate idempotency keys");
+  assert.equal(canonicalSpecies("Chicken"), "poultry", "chickens must match poultry schedules");
+  assert.equal(canonicalSpecies("Tilapia"), "fish", "tilapia groups must match fish preventive schedules");
+  assert.equal(isSpeciesCompatible("poultry", "Chicken", "poultry"), true, "poultry groups must pass schedule compatibility");
+  assert.equal(isSpeciesCompatible("sheep", "Cattle"), false, "incompatible species must be rejected");
+  const campaignAssignments = [{ targetType: "individual" }, { targetType: "individual" }, { targetType: "group", quantityTreated: 20 }];
+  assert.equal(calculateCampaignCost({ vaccineCost: 100, serviceCharge: 50, costMode: "total" }, campaignAssignments), 150, "total campaign costs must be recorded once");
+  assert.equal(calculateCampaignCost({ vaccineCost: 10, costMode: "per_animal" }, campaignAssignments), 220, "per-animal costs must include group quantities");
+  assert.equal(resolveCampaignStatus({ scheduledDate: "2099-01-01", assignments: [{ completionStatus: "completed" }, { completionStatus: "scheduled" }] }), "partially_completed", "partial assignment completion must update campaign status");
+  assert.equal(resolveCampaignStatus({ scheduledDate: "2020-01-01", assignments: [{ completionStatus: "scheduled" }] }), "overdue", "past incomplete campaigns must become overdue");
+  assert.equal(systemVaccinationTemplates.some((template) => template.scheduleName.includes("PPR")), true, "existing sheep and goat templates must be retained");
+  assert.equal(VaccinationCampaign.schema.path("assignments").schema.path("completionStatus").enumValues.includes("postponed"), true, "campaign assignments must support postponed completion");
+  assert.equal(VaccinationTemplate.schema.path("species").isRequired, true, "custom templates must be species-specific");
+  assert.equal(Transaction.schema.path("vaccinationCampaign").instance, "ObjectId", "finance transactions must link to vaccination campaigns");
+  const builtCampaign = buildCampaignPayload({ vaccineCost: 100, serviceCharge: 20, costMode: "total", assignments: [{ targetType: "individual", animal: "507f1f77bcf86cd799439011" }] });
+  assert.equal(builtCampaign.totalCost, 120, "campaign payload must calculate one finance total");
+  assert.equal(builtCampaign.assignments[0].quantityTreated, 1, "individual assignments must represent one animal");
+  const invalidCampaign = await campaignValidationErrors({ scheduleName: "", species: "cattle", vaccineName: "", scheduledDate: "bad", assignments: [] });
+  assert.equal(invalidCampaign.some((error) => error.path === "scheduleName"), true, "campaign name must be required");
+  assert.equal(invalidCampaign.some((error) => error.path === "scheduledDate"), true, "campaign dates must be valid");
+  assert.equal(invalidCampaign.some((error) => error.path === "assignments"), true, "campaigns must select at least one target");
   assert.equal(isStrongPassword("weakpass"), false, "weak passwords must be rejected");
   assert.equal(isStrongPassword("StrongPass1!"), true, "strong passwords must be accepted");
 

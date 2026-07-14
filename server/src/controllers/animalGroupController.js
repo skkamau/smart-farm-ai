@@ -3,7 +3,9 @@ import { body } from "express-validator";
 import mongoose from "mongoose";
 import AnimalGroup, { calculateBiomass } from "../models/AnimalGroup.js";
 import GroupQuantityEvent from "../models/GroupQuantityEvent.js";
+import VaccinationCampaign from "../models/VaccinationCampaign.js";
 import { groupQuantityDelta } from "../services/groupQuantityService.js";
+import { campaignHistoryRecord } from "../utils/vaccinationCampaignViews.js";
 
 const categories = ["poultry", "fish", "rabbits", "bees", "other"];
 const quantityTypes = ["confirmed", "estimated"];
@@ -124,8 +126,15 @@ export async function getAnimalGroup(req, res, next) {
     const identity = mongoose.isValidObjectId(identifier) ? { _id: identifier } : { qrCodeId: identifier };
     const group = await AnimalGroup.findOne({ ...identity, user: req.user._id });
     if (!group) return res.status(404).json({ message: "Animal group not found" });
-    const events = await GroupQuantityEvent.find({ user: req.user._id, group: group._id }).sort({ createdAt: 1 });
-    res.json({ ...group.toObject(), quantityEvents: events });
+    const [events, campaigns] = await Promise.all([
+      GroupQuantityEvent.find({ user: req.user._id, group: group._id }).sort({ createdAt: 1 }),
+      VaccinationCampaign.find({ user: req.user._id, "assignments.group": group._id }).sort({ scheduledDate: 1 })
+    ]);
+    const vaccinationCampaigns = campaigns.map((campaign) => {
+      const assignment = campaign.assignments.find((item) => String(item.group) === String(group._id));
+      return { ...campaignHistoryRecord(campaign, assignment), quantityTreated: assignment.quantityTreated };
+    });
+    res.json({ ...group.toObject(), quantityEvents: events, vaccinationCampaigns });
   } catch (error) { next(error); }
 }
 

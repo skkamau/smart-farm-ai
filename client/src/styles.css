@@ -167,4 +167,27 @@ body {
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold;
   }
+
+  :root.dark .vaccination-page .text-farm-950,
+  :root.dark .vaccination-page .text-farm-900,
+  :root.dark .vaccination-page .text-slate-800,
+  :root.dark .vaccination-page .text-slate-700 {
+    color: #f7f8f2;
+  }
+
+  :root.dark .vaccination-page .text-slate-600,
+  :root.dark .vaccination-page .text-slate-500 {
+    color: #cbd5e1;
+  }
+
+  :root.dark .vaccination-page .bg-white,
+  :root.dark .vaccination-page .bg-field-cream,
+  :root.dark .vaccination-page .bg-farm-50 {
+    background-color: rgba(8, 37, 26, 0.96);
+  }
+
+  :root.dark .vaccination-page .border-farm-100,
+  :root.dark .vaccination-page .border-farm-200 {
+    border-color: rgba(223, 227, 196, 0.2);
+  }
 }

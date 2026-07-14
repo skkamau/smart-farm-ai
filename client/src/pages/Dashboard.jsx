@@ -141,7 +141,7 @@ function buildDailyReminders(data) {
       icon: AlertTriangle,
       priority: "urgent",
       title: `${totals.overdueVaccinations} overdue vaccination${totals.overdueVaccinations === 1 ? "" : "s"}`,
-      detail: overdueVaccine ? `${overdueVaccine.animal?.animalId || "Animal"} - ${overdueVaccine.vaccineName}` : "Schedule overdue doses today.",
+      detail: overdueVaccine ? `${overdueVaccine.animal?.animalId || overdueVaccine.targetSummary || "Animal"} - ${overdueVaccine.vaccineName}` : "Schedule overdue doses today.",
       to: "/vaccinations"
     });
   }
@@ -163,7 +163,7 @@ function buildDailyReminders(data) {
       icon: CalendarClock,
       priority: "medium",
       title: `${totals.upcomingVaccinations} vaccine${totals.upcomingVaccinations === 1 ? "" : "s"} coming up`,
-      detail: upcomingVaccine ? `${upcomingVaccine.animal?.animalId || "Animal"} - due ${formatDate(upcomingVaccine.nextDueDate)}` : "Check upcoming vaccine schedule.",
+      detail: upcomingVaccine ? `${upcomingVaccine.animal?.animalId || upcomingVaccine.targetSummary || "Animal"} - due ${formatDate(upcomingVaccine.nextDueDate)}` : "Check upcoming vaccine schedule.",
       to: "/vaccinations"
     });
   }

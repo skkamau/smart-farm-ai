@@ -9,9 +9,11 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import VaccinationCampaign from "../models/VaccinationCampaign.js";
 import WeatherRecord from "../models/WeatherRecord.js";
 import Document from "../models/Document.js";
 import { generateFarmIntelligence } from "./aiService.js";
+import { campaignHistoryRecord } from "../utils/vaccinationCampaignViews.js";
 
 const reportTypes = [
   "animals", "health", "vet", "vaccinations", "breeding", "births", "family", "crops", "crop-expenses",
@@ -256,8 +258,21 @@ export async function getReportRows(user, type, filters = {}) {
   }
   if (type === "vet") return getReportRows(user, "health", filters);
   if (type === "vaccinations") {
-    const rows = await VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).lean();
-    return rows.map((r) => ({ AnimalID: r.animal?.animalId, Vaccine: r.vaccineName, DateGiven: r.dateGiven, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, ServiceCharge: r.serviceCharge, VaccineCost: r.vaccineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, Status: r.status, Notes: r.notes }));
+    const [rows, campaigns] = await Promise.all([
+      VaccinationRecord.find({ user }).populate("animal", "animalId name species").sort({ nextDueDate: 1 }).lean(),
+      VaccinationCampaign.find({ user })
+        .populate("assignments.animal", "animalId name species")
+        .populate("assignments.group", "groupId groupName species")
+        .sort({ scheduledDate: 1 }).lean()
+    ]);
+    return [
+      ...rows.map((r) => ({ RecordType: "Existing record", Schedule: r.vaccineName, Species: r.animal?.species, Targets: r.animal?.animalId, Vaccine: r.vaccineName, DateGiven: r.dateGiven, NextDue: r.nextDueDate, Vet: r.vetName, Batch: r.batchNumber, ServiceCharge: r.serviceCharge, VaccineCost: r.vaccineCost, TransportCost: r.transportCost, OtherCost: r.otherCost, TotalCost: r.totalCost, PaymentMethod: r.paymentMethod, Status: r.status, Completion: r.status === "completed" ? "1/1" : "0/1", Notes: r.notes })),
+      ...campaigns.map((campaign) => {
+        const targets = campaign.assignments.map((assignment) => assignment.animal?.animalId || assignment.group?.groupId || "Unknown").join("; ");
+        const completed = campaign.assignments.filter((assignment) => assignment.completionStatus === "completed").length;
+        return { RecordType: "Campaign", Schedule: campaign.scheduleName, Species: campaign.species, Targets: targets, Vaccine: campaign.vaccineName, DiseasePrevented: campaign.diseasePrevented, DateGiven: campaign.firstVaccinationDate, NextDue: campaign.scheduledDate, BoosterDate: campaign.boosterDate, Vet: campaign.vetName || campaign.provider, Batch: campaign.batchNumber, Dose: `${campaign.dose || 0} ${campaign.doseUnit || ""}`, ServiceCharge: campaign.serviceCharge, VaccineCost: campaign.vaccineCost, TransportCost: campaign.transportCost, OtherCost: campaign.otherCost, TotalCost: campaign.totalCost, PaymentMethod: campaign.paymentMethod, Status: campaign.status, Completion: `${completed}/${campaign.assignments.length}`, Notes: campaign.notes };
+      })
+    ];
   }
   if (type === "breeding") {
     const rows = await BreedingRecord.find({ user }).populate("femaleAnimal", "animalId name").populate("maleAnimal", "animalId name").sort({ matingDate: -1 }).lean();
@@ -378,14 +393,16 @@ export async function sendPdf(res, name, rows, type) {
 async function getIndividualAnimalData(user, animalId) {
   const animal = await Animal.findOne({ _id: animalId, user }).populate("mother", "animalId name").populate("father", "animalId name").populate("children", "animalId name");
   if (!animal) return null;
-  const [health, vaccinations, breeding, births, costs] = await Promise.all([
+  const [health, vaccinations, vaccinationCampaigns, breeding, births, costs] = await Promise.all([
     HealthRecord.find({ user, animal: animal._id }).sort({ recordDate: -1 }).lean(),
     VaccinationRecord.find({ user, animal: animal._id }).sort({ nextDueDate: 1 }).lean(),
+    VaccinationCampaign.find({ user, "assignments.animal": animal._id }).sort({ scheduledDate: 1 }),
     BreedingRecord.find({ user, $or: [{ femaleAnimal: animal._id }, { maleAnimal: animal._id }] }).populate("femaleAnimal", "animalId name").populate("maleAnimal", "animalId name").sort({ matingDate: -1 }).lean(),
     BirthRecord.find({ user, $or: [{ mother: animal._id }, { father: animal._id }, { offspring: animal._id }] }).populate("mother", "animalId name").populate("father", "animalId name").populate("offspring", "animalId name").sort({ birthDate: -1 }).lean(),
     Transaction.find({ user, animal: animal._id }).sort({ transactionDate: -1 }).lean()
   ]);
-  return { animal, health, vaccinations, breeding, births, costs };
+  const campaignVaccinations = vaccinationCampaigns.map((campaign) => campaignHistoryRecord(campaign, campaign.assignments.find((item) => String(item.animal) === String(animal._id))));
+  return { animal, health, vaccinations: [...vaccinations, ...campaignVaccinations], breeding, births, costs };
 }
 
 function individualAnimalRows(data) {

@@ -4,6 +4,7 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import VaccinationCampaign from "../models/VaccinationCampaign.js";
 
 const stockSections = ["Feed", "Fuel", "Consumables"];
 const financeSections = ["Income", "Expenses", "CropExpense", "AnimalHealth", "Construction", "Equipment", "Feed", "Fuel", "Consumables", "CashSavings"];
@@ -22,11 +23,12 @@ function validDate(value) {
 export const transactionRules = [
   body("type").isIn(transactionTypes).withMessage("Type must be income or expense"),
   body("financeSection").optional({ values: "falsy" }).isIn(financeSections),
-  body("source").optional({ values: "falsy" }).isIn(["manual", "crop", "health"]),
+  body("source").optional({ values: "falsy" }).isIn(["manual", "crop", "health", "vaccination"]),
   body("crop").optional({ values: "falsy" }).isMongoId(),
   body("animal").optional({ values: "falsy" }).isMongoId(),
   body("healthRecord").optional({ values: "falsy" }).isMongoId(),
   body("vaccinationRecord").optional({ values: "falsy" }).isMongoId(),
+  body("vaccinationCampaign").optional({ values: "falsy" }).isMongoId(),
   body("amount").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("quantity").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("unitCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
@@ -41,7 +43,7 @@ export const transactionRules = [
 ];
 
 function normalizePayload(body) {
-  const allowed = ["type", "financeSection", "category", "crop", "animal", "healthRecord", "vaccinationRecord", "source", "amount", "description", "transactionDate", "item", "quantity", "unit", "unitCost", "totalCost", "paymentMethod", "supplierVendor", "storageLocation", "inventoryStatus", "minimumStockLevel", "expiryDate", "quantityIn", "quantityOut", "balance", "month", "cashAmount", "savingsAmount", "serviceCharge", "medicineCost", "transportCost", "otherCost", "followUpDate", "remarks", "notes"];
+  const allowed = ["type", "financeSection", "category", "crop", "animal", "healthRecord", "vaccinationRecord", "vaccinationCampaign", "source", "amount", "description", "transactionDate", "item", "quantity", "unit", "unitCost", "totalCost", "paymentMethod", "supplierVendor", "storageLocation", "inventoryStatus", "minimumStockLevel", "expiryDate", "quantityIn", "quantityOut", "balance", "month", "cashAmount", "savingsAmount", "serviceCharge", "medicineCost", "transportCost", "otherCost", "followUpDate", "remarks", "notes"];
   const out = allowed.reduce((payload, key) => {
     if (body[key] !== undefined) payload[key] = body[key];
     return payload;
@@ -81,6 +83,9 @@ async function assertLinkedOwnership(payload, userId) {
   }
   if (payload.vaccinationRecord && !(await VaccinationRecord.exists({ _id: payload.vaccinationRecord, user: userId }))) {
     return "Vaccination record not found";
+  }
+  if (payload.vaccinationCampaign && !(await VaccinationCampaign.exists({ _id: payload.vaccinationCampaign, user: userId }))) {
+    return "Vaccination campaign not found";
   }
   return null;
 }

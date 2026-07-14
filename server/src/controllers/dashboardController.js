@@ -5,9 +5,11 @@ import Crop from "../models/Crop.js";
 import HealthRecord from "../models/HealthRecord.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
+import VaccinationCampaign from "../models/VaccinationCampaign.js";
 import WeatherRecord from "../models/WeatherRecord.js";
 import { generateFarmIntelligence } from "../services/aiService.js";
 import { normalizeVaccination } from "../utils/vaccinations.js";
+import { resolveCampaignStatus } from "../services/vaccinationCampaignService.js";
 
 const lifecycleStatuses = ["active", "sold", "transferred", "archived", "deceased"];
 
@@ -17,12 +19,16 @@ export async function getDashboard(req, res, next) {
     const today = new Date();
     const next45 = new Date();
     next45.setDate(today.getDate() + 45);
-    const [animals, crops, transactions, recentVetCases, vaccinations, recentBirths, expectedBirths, latestWeather] = await Promise.all([
+    const [animals, crops, transactions, recentVetCases, vaccinations, vaccinationCampaigns, recentBirths, expectedBirths, latestWeather] = await Promise.all([
       Animal.find({ user }).lean(),
       Crop.find({ user }).lean(),
       Transaction.find({ user }).sort({ transactionDate: -1 }).limit(8).lean(),
       HealthRecord.find({ user }).populate("animal", "animalId name species").sort({ recordDate: -1 }).limit(6).lean(),
       VaccinationRecord.find({ user }).populate("animal", "animalId name species lifecycleStatus healthStatus reproductiveStatus").sort({ nextDueDate: 1 }).limit(25),
+      VaccinationCampaign.find({ user, status: { $ne: "cancelled" } })
+        .populate("assignments.animal", "animalId name species lifecycleStatus")
+        .populate("assignments.group", "groupId groupName species lifecycleStatus currentQuantity")
+        .sort({ scheduledDate: 1 }).limit(25),
       BirthRecord.find({ user }).populate("mother", "animalId name species").populate("father", "animalId name species").populate("offspring", "animalId name species").sort({ birthDate: -1 }).limit(6).lean(),
       BreedingRecord.find({ user, pregnancyStatus: "pregnant", expectedBirthDate: { $gte: today, $lte: next45 } })
         .populate("femaleAnimal", "animalId name species")
@@ -34,6 +40,23 @@ export async function getDashboard(req, res, next) {
     ]);
     const normalizedVaccinations = (await Promise.all(vaccinations.map((record) => normalizeVaccination(record))))
       .filter((record) => record.animal?.lifecycleStatus !== "deceased");
+    for (const campaign of vaccinationCampaigns) {
+      const status = resolveCampaignStatus(campaign);
+      if (campaign.status !== status) { campaign.status = status; await campaign.save(); }
+    }
+    const campaignAlerts = vaccinationCampaigns
+      .filter((campaign) => ["due_soon", "overdue"].includes(campaign.status))
+      .map((campaign) => ({
+        _id: campaign._id,
+        campaign: true,
+        scheduleName: campaign.scheduleName,
+        vaccineName: campaign.vaccineName,
+        species: campaign.species,
+        nextDueDate: campaign.scheduledDate,
+        status: campaign.status === "due_soon" ? "upcoming" : campaign.status,
+        affectedCount: campaign.assignments.length,
+        targetSummary: campaign.assignments[0]?.animal?.animalId || campaign.assignments[0]?.group?.groupId || `${campaign.assignments.length} targets`
+      }));
 
     const income = await Transaction.aggregate([
       { $match: { user, type: "income" } },
@@ -61,8 +84,8 @@ export async function getDashboard(req, res, next) {
     }, {});
     const readyCrops = crops.filter((crop) => crop.status === "Ready").length;
     const dueForBreeding = animals.filter((animal) => animal.gender === "Female" && animal.lifecycleStatus === "active" && animal.healthStatus === "healthy" && animal.reproductiveStatus !== "pregnant").length;
-    const upcomingVaccinations = normalizedVaccinations.filter((record) => record.status === "upcoming").length;
-    const overdueVaccinations = normalizedVaccinations.filter((record) => record.status === "overdue").length;
+    const upcomingVaccinations = normalizedVaccinations.filter((record) => record.status === "upcoming").length + campaignAlerts.filter((record) => record.status === "upcoming").length;
+    const overdueVaccinations = normalizedVaccinations.filter((record) => record.status === "overdue").length + campaignAlerts.filter((record) => record.status === "overdue").length;
     const intelligence = await generateFarmIntelligence(user);
 
     res.json({
@@ -103,9 +126,8 @@ export async function getDashboard(req, res, next) {
       recentVetCases,
       recentBirths,
       expectedBirths,
-      vaccinationAlerts: normalizedVaccinations
-        .filter((record) => ["upcoming", "overdue"].includes(record.status))
-        .slice(0, 8),
+      vaccinationAlerts: [...normalizedVaccinations.filter((record) => ["upcoming", "overdue"].includes(record.status)), ...campaignAlerts]
+        .sort((a, b) => new Date(a.nextDueDate) - new Date(b.nextDueDate)).slice(0, 8),
       latestWeather,
       aiRecommendations: intelligence.recommendations.slice(0, 6)
     });
