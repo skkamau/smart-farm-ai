@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-export function buildQrValue(qrCodeId) {
+export function buildQrValue(qrCodeId, resource = "scan") {
   const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
-  return `${clientUrl.replace(/\/$/, "")}/scan/${qrCodeId}`;
+  return `${clientUrl.replace(/\/$/, "")}/${resource}/${qrCodeId}`;
 }
 
 export async function ensureAnimalQr(animal) {

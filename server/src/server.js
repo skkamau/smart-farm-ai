@@ -10,6 +10,7 @@ import { migrateUnknownAnimalGenders } from "./services/animalGenderMigration.js
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import animalRoutes from "./routes/animalRoutes.js";
+import animalGroupRoutes from "./routes/animalGroupRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import birthRoutes from "./routes/birthRoutes.js";
@@ -64,6 +65,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/animals", animalRoutes);
+app.use("/api/animal-groups", animalGroupRoutes);
 app.use("/api/breeding-records", breedingRoutes);
 app.use("/api/birth-records", birthRoutes);
 app.use("/api/crops", cropRoutes);

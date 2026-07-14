@@ -1,5 +1,5 @@
 import axios from "axios";
-import { storageGet } from "../utils/storage";
+import { storageGet, storageRemove } from "../utils/storage";
 
 const productionApiUrl = "https://smart-farm-ai-api.onrender.com/api";
 

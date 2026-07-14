@@ -5,6 +5,7 @@ import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppOpeningGate from "./components/AppOpeningGate";
 import AnimalProfile from "./pages/AnimalProfile";
+import AnimalGroupProfile from "./pages/AnimalGroupProfile";
 import Animals from "./pages/Animals";
 import Alerts from "./pages/Alerts";
 import Auth from "./pages/Auth";
@@ -63,6 +64,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="animals" element={<Animals />} />
         <Route path="animals/:id" element={<AnimalProfile />} />
+        <Route path="groups/:id" element={<AnimalGroupProfile />} />
         <Route path="breeding" element={<BreedingRecords />} />
         <Route path="births" element={<BirthRecords />} />
         <Route path="assistant" element={<SmartAssistant />} />

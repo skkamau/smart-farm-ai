@@ -14,6 +14,21 @@ Phase 6 adds Reports, Exports, and Farm Documents.
 
 Advanced items from the full brief are intentionally not included yet: family trees, AI assistant, and advanced reports.
 
+## Animal Groups and Batches - Phase 1
+
+The Animals area now supports two tracking modes:
+
+- **Individual Animal** keeps the existing tagged-animal workflow for cattle, goats, sheep, pigs, and selected high-value animals.
+- **Animal Group / Batch** stores one record for a poultry flock, fish pond or tank, rabbit colony, bee colony, or another large group.
+
+Create a group from **Animals > Add animals > Animal Group / Batch**. The server generates a stable category-aware ID such as `FLK-001`, `PND-001`, `TNK-001`, or `RBT-001` when an ID is not supplied.
+
+Every quantity change is recorded as an immutable quantity event. Mortality, sales, harvests, transfers, additions, and stock corrections update the synchronized current quantity. The API rejects events that would create a negative balance and rejects repeated idempotency keys. Fish biomass is calculated as current estimated quantity multiplied by sampled average weight, converted to kilograms.
+
+Each group has one QR code that opens its group profile. The profile includes overview, quantity calculation history, activity actions, and QR download/print controls.
+
+This group-management delivery is deliberately limited to its first phase. Group health, inventory, finance, split/merge, and group-to-individual conversion are reserved for the next phases so existing individual-animal workflows remain stable.
+
 ## Stack
 
 - React + Vite

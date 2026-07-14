@@ -17,6 +17,9 @@ import { signAdminToken, signToken } from "./utils/tokens.js";
 import { sanitizeAuditMetadata } from "./services/auditService.js";
 import { defaultSupportEmail, smtpConfigured } from "./services/mailService.js";
 import BugReport from "./models/BugReport.js";
+import AnimalGroup, { calculateBiomass } from "./models/AnimalGroup.js";
+import GroupQuantityEvent from "./models/GroupQuantityEvent.js";
+import { nextGroupQuantity } from "./services/groupQuantityService.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -33,6 +36,15 @@ async function animalValidationErrors(body) {
 const originalEnv = { ...process.env };
 
 try {
+  let flockQuantity = 500;
+  flockQuantity = nextGroupQuantity(flockQuantity, "death", 10);
+  flockQuantity = nextGroupQuantity(flockQuantity, "sold", 100);
+  assert.equal(flockQuantity, 390, "group quantity must reflect mortality and sales");
+  assert.throws(() => nextGroupQuantity(5, "death", 6), /negative/, "group quantity must never become negative");
+  assert.equal(nextGroupQuantity(390, "stock_correction", 400), 400, "stock correction must set the confirmed balance");
+  assert.equal(calculateBiomass(4000, 250, "g"), 1000, "fish biomass must convert sampled grams to kilograms");
+  assert.equal(AnimalGroup.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.groupId === 1 && options.unique), true, "group IDs must be unique per owner");
+  assert.equal(GroupQuantityEvent.schema.indexes().some(([fields, options]) => fields.idempotencyKey === 1 && options.unique), true, "quantity events must reject duplicate idempotency keys");
   assert.equal(isStrongPassword("weakpass"), false, "weak passwords must be rejected");
   assert.equal(isStrongPassword("StrongPass1!"), true, "strong passwords must be accepted");
 

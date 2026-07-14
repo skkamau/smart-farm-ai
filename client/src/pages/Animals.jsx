@@ -1,4 +1,4 @@
-import { Baby, Beef, Edit, Eye, FileText, HeartHandshake, Plus, ShieldPlus, Trash2 } from "lucide-react";
+import { Baby, Beef, Boxes, Edit, Eye, FileText, HeartHandshake, Plus, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,16 +14,25 @@ const lifecycleStatuses = ["active", "sold", "transferred", "archived", "decease
 const healthStatuses = ["healthy", "sick", "recovering", "chronic", "referred", "unknown"];
 const reproductiveStatuses = ["not_pregnant", "pregnant", "postpartum", "nursing", "unknown"];
 const deathCauses = ["Disease", "Injury", "Accident", "Birth complications", "Old age", "Predation", "Poisoning", "Unknown", "Other"];
+const emptyGroup = { groupId: "", groupName: "", category: "poultry", species: "Chicken", breedOrStrain: "", productionPurpose: "", startingQuantity: "", quantityType: "confirmed", quantityConfidence: "not_applicable", hatchStockingOrArrivalDate: "", locationType: "poultry_house", locationName: "", averageWeight: "", averageWeightUnit: "kg", purchaseCost: "", estimatedValue: "", supplierOrSource: "", healthStatus: "unknown", notes: "" };
+const groupCategories = ["poultry", "fish", "rabbits", "bees", "other"];
+const locationTypes = ["poultry_house", "coop", "pond", "tank", "cage", "hutch", "apiary", "other"];
 
 export default function Animals() {
   const [animals, setAnimals] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [editing, setEditing] = useState(null);
+  const [groupEditing, setGroupEditing] = useState(null);
+  const [addMode, setAddMode] = useState(false);
+  const [view, setView] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const navigate = useNavigate();
 
   function load() {
-    api.get("/animals").then(({ data }) => setAnimals(data)).catch(() => toast.error("Could not load animals"));
+    Promise.all([api.get("/animals"), api.get("/animal-groups")])
+      .then(([animalResponse, groupResponse]) => { setAnimals(animalResponse.data); setGroups(groupResponse.data); })
+      .catch(() => toast.error("Could not load animal records"));
   }
 
   useEffect(load, []);
@@ -32,6 +41,11 @@ export default function Animals() {
     const term = search.toLowerCase();
     return animals.filter((animal) => (!statusFilter || animal.lifecycleStatus === statusFilter) && [animal.animalId, animal.name, animal.species, animal.breed, animal.lifecycleStatus, animal.healthStatus, animal.reproductiveStatus].join(" ").toLowerCase().includes(term));
   }, [animals, search, statusFilter]);
+
+  const filteredGroups = useMemo(() => {
+    const term = search.toLowerCase();
+    return groups.filter((group) => (!statusFilter || group.lifecycleStatus === statusFilter) && [group.groupId, group.groupName, group.species, group.breedOrStrain, group.locationName, group.healthStatus].join(" ").toLowerCase().includes(term));
+  }, [groups, search, statusFilter]);
 
   async function remove(id) {
     if (!confirm("Delete this animal record?")) return;
@@ -42,7 +56,7 @@ export default function Animals() {
 
   return (
     <div>
-      <PageHeader title="Animals" eyebrow="Livestock records" action={<div className="flex flex-wrap gap-2"><ExportButtons type="animals" basename="animals" /><button className="btn-primary" onClick={() => setEditing(emptyAnimal)}><Plus className="h-4 w-4" /> Add animal</button></div>} />
+      <PageHeader title="Animals" eyebrow="Individuals and managed groups" action={<div className="flex flex-wrap gap-2"><ExportButtons type="animals" basename="animals" /><button className="btn-primary" onClick={() => setAddMode(true)}><Plus className="h-4 w-4" /> Add animals</button></div>} />
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <AnimalToolCard to="/animals" label="All Animals" icon={Beef} />
         <AnimalToolCard to="/vaccinations" label="Vaccines" icon={ShieldPlus} />
@@ -50,10 +64,17 @@ export default function Animals() {
         <AnimalToolCard to="/births" label="Births" icon={Baby} />
         <AnimalToolCard to="/reports" label="Reports" icon={FileText} />
       </div>
+      <div className="mb-4 flex w-full gap-1 overflow-x-auto rounded-lg border border-farm-100 bg-white p-1 sm:w-fit">
+        {[['all', 'All'], ['individuals', `Individuals (${animals.length})`], ['groups', `Groups (${groups.length})`]].map(([key, label]) => (
+          <button key={key} className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-bold ${view === key ? "bg-farm-900 text-white" : "text-slate-600 hover:bg-farm-50"}`} onClick={() => setView(key)}>{label}</button>
+        ))}
+      </div>
       <div className="mb-4 grid gap-3 sm:max-w-3xl sm:grid-cols-[1fr_220px]">
         <input className="input" placeholder="Search by ID, name, species, breed, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
         <select className="input" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All animals</option>{lifecycleStatuses.map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}</select>
       </div>
+      {(view === "all" || view === "individuals") && <section className="mb-6">
+      {view === "all" && <h2 className="mb-3 text-base font-black text-farm-950">Individual animals</h2>}
       <DataTable
         rows={filtered}
         emptyText="No animal records yet."
@@ -74,9 +95,81 @@ export default function Animals() {
           </div>
         )}
       />
+      </section>}
+      {(view === "all" || view === "groups") && <section>
+        {view === "all" && <h2 className="mb-3 text-base font-black text-farm-950">Groups and batches</h2>}
+        <DataTable
+          rows={filteredGroups}
+          emptyText="No animal groups or batches yet."
+          columns={[
+            { key: "groupId", label: "Group", render: (row) => <div><div className="font-black text-farm-950">{row.groupId}</div><div className="text-xs text-slate-500">{row.groupName}</div></div> },
+            { key: "species", label: "Species / strain", render: (row) => <div>{row.species}<div className="text-xs text-slate-500">{row.breedOrStrain || "Not set"}</div></div> },
+            { key: "currentQuantity", label: "Current quantity", render: (row) => <div><span className="text-base font-black">{Number(row.currentQuantity).toLocaleString()}</span><div className="text-xs text-slate-500">{labelStatus(row.quantityType)}</div></div> },
+            { key: "locationName", label: "Location", render: (row) => row.locationName || labelStatus(row.locationType) },
+            { key: "healthStatus", label: "Health", render: (row) => <Status value={row.healthStatus} /> },
+            { key: "averageWeight", label: "Weight / biomass", render: (row) => row.category === "fish" ? `${row.estimatedBiomass || 0} kg biomass` : `${row.averageWeight || 0} ${row.averageWeightUnit}` }
+          ]}
+          actions={(row) => <button className="btn-muted px-2" onClick={() => navigate(`/groups/${row._id}`)} aria-label="View group"><Eye className="h-4 w-4" /></button>}
+        />
+      </section>}
       {editing && <AnimalModal animal={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+      {groupEditing && <GroupModal group={groupEditing} onClose={() => setGroupEditing(null)} onSaved={(group) => { setGroupEditing(null); load(); navigate(`/groups/${group._id}`); }} />}
+      {addMode && <TrackingModeModal onClose={() => setAddMode(false)} onChoose={(mode) => { setAddMode(false); mode === "individual" ? setEditing(emptyAnimal) : setGroupEditing(emptyGroup); }} />}
     </div>
   );
+}
+
+function TrackingModeModal({ onClose, onChoose }) {
+  return <CrudModal title="How do you track these animals?" onClose={onClose}>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <button className="rounded-lg border border-farm-100 p-5 text-left transition hover:border-farm-600 hover:bg-farm-50" onClick={() => onChoose("individual")}>
+        <Beef className="h-7 w-7 text-farm-700" /><div className="mt-4 font-black text-farm-950">Individual Animal</div><p className="mt-1 text-sm text-slate-600">For cattle, goats, sheep, pigs, breeding stock, and tagged animals.</p>
+      </button>
+      <button className="rounded-lg border border-farm-100 p-5 text-left transition hover:border-farm-600 hover:bg-farm-50" onClick={() => onChoose("group")}>
+        <UsersRound className="h-7 w-7 text-farm-700" /><div className="mt-4 font-black text-farm-950">Animal Group / Batch</div><p className="mt-1 text-sm text-slate-600">For poultry flocks, fish ponds, rabbit colonies, bee colonies, and other large groups.</p>
+      </button>
+    </div>
+  </CrudModal>;
+}
+
+function GroupModal({ group, onClose, onSaved }) {
+  const [form, setForm] = useState(group);
+  const [saving, setSaving] = useState(false);
+  const isFish = form.category === "fish";
+
+  function update(field, value) { setForm((current) => ({ ...current, [field]: value })); }
+  function setCategory(category) {
+    const defaults = category === "fish" ? { species: "Tilapia", locationType: "pond", quantityType: "estimated", quantityConfidence: "medium", averageWeightUnit: "g" } : category === "rabbits" ? { species: "Rabbit", locationType: "hutch", quantityType: "confirmed", quantityConfidence: "not_applicable" } : category === "bees" ? { species: "Honey bee", locationType: "apiary", quantityType: "estimated", quantityConfidence: "medium" } : { species: "Chicken", locationType: "poultry_house", quantityType: "confirmed", quantityConfidence: "not_applicable" };
+    setForm((current) => ({ ...current, category, ...defaults }));
+  }
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const payload = { ...form, startingQuantity: Number(form.startingQuantity), averageWeight: Number(form.averageWeight || 0), purchaseCost: Number(form.purchaseCost || 0), estimatedValue: Number(form.estimatedValue || 0) };
+      const { data } = await api.post("/animal-groups", payload);
+      toast.success("Animal group created"); onSaved(data);
+    } catch (error) { toast.error(error.response?.data?.message || "Could not create group"); }
+    finally { setSaving(false); }
+  }
+  return <CrudModal title="Add Animal Group / Batch" onClose={onClose}>
+    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-5">{groupCategories.map((category) => <button type="button" key={category} className={`rounded-md border px-3 py-2 text-sm font-bold ${form.category === category ? "border-farm-700 bg-farm-50 text-farm-900" : "border-slate-200 text-slate-600"}`} onClick={() => setCategory(category)}>{labelStatus(category)}</button>)}</div>
+      <Field label="Group ID (optional)" value={form.groupId} onChange={(v) => update("groupId", v)} /><Field label="Group name" value={form.groupName} onChange={(v) => update("groupName", v)} required />
+      <Field label="Species" value={form.species} onChange={(v) => update("species", v)} required /><Field label="Breed or strain" value={form.breedOrStrain} onChange={(v) => update("breedOrStrain", v)} />
+      <Field label="Production purpose" value={form.productionPurpose} onChange={(v) => update("productionPurpose", v)} /><Field label="Starting quantity" type="number" min="1" value={form.startingQuantity} onChange={(v) => update("startingQuantity", v)} required />
+      <Select label="Quantity type" value={form.quantityType} onChange={(v) => update("quantityType", v)} options={["confirmed", "estimated"]} />
+      {(isFish || form.quantityType === "estimated") && <Select label="Quantity confidence" value={form.quantityConfidence} onChange={(v) => update("quantityConfidence", v)} options={["high", "medium", "low"]} />}
+      <Field label="Hatch, stocking or arrival date" type="date" value={form.hatchStockingOrArrivalDate} onChange={(v) => update("hatchStockingOrArrivalDate", v)} />
+      <Select label="Location type" value={form.locationType} onChange={(v) => update("locationType", v)} options={locationTypes} />
+      <Field label="Location name" value={form.locationName} onChange={(v) => update("locationName", v)} /><Field label={`Average weight (${form.averageWeightUnit})`} type="number" min="0" value={form.averageWeight} onChange={(v) => update("averageWeight", v)} />
+      <Select label="Weight unit" value={form.averageWeightUnit} onChange={(v) => update("averageWeightUnit", v)} options={["g", "kg"]} />
+      <Field label="Purchase cost / opening value" type="number" min="0" value={form.purchaseCost} onChange={(v) => update("purchaseCost", v)} />
+      <Field label="Estimated current value" type="number" min="0" value={form.estimatedValue} onChange={(v) => update("estimatedValue", v)} /><Field label="Supplier or source" value={form.supplierOrSource} onChange={(v) => update("supplierOrSource", v)} />
+      <label className="space-y-1 sm:col-span-2"><span className="label">Notes</span><textarea className="input min-h-24" value={form.notes} onChange={(e) => update("notes", e.target.value)} /></label>
+      <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary" disabled={saving}><Boxes className="h-4 w-4" /> {saving ? "Creating..." : "Create group"}</button></div>
+    </form>
+  </CrudModal>;
 }
 
 function AnimalToolCard({ to, label, icon: Icon }) {
@@ -163,8 +256,8 @@ function AnimalModal({ animal, onClose, onSaved }) {
   );
 }
 
-function Field({ label, value, onChange, type = "text", required }) {
-  return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
+function Field({ label, value, onChange, type = "text", required, min }) {
+  return <label className="space-y-1"><span className="label">{label}</span><input className="input" type={type} min={min} value={value ?? ""} onChange={(event) => onChange(event.target.value)} required={required} /></label>;
 }
 
 function Select({ label, value, onChange, options, disabled }) {
