@@ -76,6 +76,7 @@ try {
   assert.equal(resolveCampaignStatus({ scheduledDate: "2020-01-01", assignments: [{ completionStatus: "scheduled" }] }), "overdue", "past incomplete campaigns must become overdue");
   assert.equal(systemVaccinationTemplates.some((template) => template.scheduleName.includes("PPR")), false, "private sheep and goat templates must not be exposed globally");
   assert.equal(VaccinationCampaign.schema.path("assignments").schema.path("completionStatus").enumValues.includes("postponed"), true, "campaign assignments must support postponed completion");
+  assert.equal(VaccinationCampaign.schema.path("dateIssued").instance, "Date", "campaigns must store their date issued separately from the scheduled date");
   assert.equal(VaccinationTemplate.schema.path("supportedSpecies").instance, "Array", "templates must support one or more compatible species");
   assert.equal(Transaction.schema.path("vaccinationCampaign").instance, "ObjectId", "finance transactions must link to vaccination campaigns");
   const builtCampaign = buildCampaignPayload({ species: "goat", supportedSpecies: ["sheep", "goat"], vaccineCost: 100, serviceCharge: 20, costMode: "total", assignments: [{ targetType: "individual", animal: "507f1f77bcf86cd799439011" }] });

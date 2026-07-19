@@ -33,6 +33,7 @@ const vaccinationCampaignSchema = new mongoose.Schema(
     majorSigns: { type: String, trim: true, maxlength: 2000, default: "" },
     safetyNotice: { type: String, trim: true, maxlength: 1000, default: "" },
     firstVaccinationDate: { type: Date, default: null },
+    dateIssued: { type: Date, default: null, index: true },
     scheduledDate: { type: Date, required: true, index: true },
     nextVaccinationDate: { type: Date, default: null },
     boosterDate: { type: Date, default: null },

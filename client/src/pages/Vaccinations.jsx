@@ -19,7 +19,7 @@ function blankCampaign() {
   return {
     scheduleName: "", species: "goat", supportedSpecies: ["goat"], customSpecies: "", appliesToMultipleSpecies: false,
     breedOrStrain: "", productionType: "", treatmentType: "vaccination", vaccineName: "", diseasePrevented: "",
-    recommendedStage: "", firstVaccinationDate: "", scheduledDate: inputDate(new Date()), nextVaccinationDate: "", boosterDate: "",
+    recommendedStage: "", firstVaccinationDate: "", dateIssued: inputDate(new Date()), scheduledDate: inputDate(new Date()), nextVaccinationDate: "", boosterDate: "",
     boosterInterval: "", recurrence: "", dose: "", doseUnit: "ml", administrationRoute: "", vetName: "", provider: "",
     batchNumber: "", expiryDate: "", vaccineCost: "", serviceCharge: "", transportCost: "", otherCost: "",
     costMode: "total", paymentMethod: "Mpesa", reminderSettings: { enabled: true, daysBefore: 7, onDueDate: true, afterDueIfIncomplete: true, boosterReminder: true, expiryReminder: true },
@@ -30,7 +30,7 @@ function blankCampaign() {
 function nextDoseCampaign(campaign) {
   return {
     ...blankCampaign(), ...campaign, _id: undefined, template: campaign.template?._id || campaign.template || "",
-    previousCampaign: campaign._id, scheduleName: `${campaign.scheduleName} - next dose`, scheduledDate: "", status: "scheduled",
+    previousCampaign: campaign._id, scheduleName: `${campaign.scheduleName} - next dose`, dateIssued: inputDate(new Date()), scheduledDate: "", status: "scheduled",
     assignments: campaign.assignments.map((item) => ({ targetType: item.targetType, animal: item.animal?._id || item.animal, group: item.group?._id || item.group, quantityTreated: item.quantityTreated, completionStatus: "scheduled" })),
     financeTransaction: undefined, inventoryDeductionTransaction: undefined, inventoryDeductedAt: undefined,
     vaccineCost: "", serviceCharge: "", transportCost: "", otherCost: ""
@@ -111,7 +111,7 @@ export default function Vaccinations() {
     setEditing({
       ...campaign,
       supportedSpecies: campaign.supportedSpecies?.length ? campaign.supportedSpecies : [campaign.species],
-      firstVaccinationDate: inputDate(campaign.firstVaccinationDate), scheduledDate: inputDate(campaign.scheduledDate),
+      firstVaccinationDate: inputDate(campaign.firstVaccinationDate), dateIssued: inputDate(campaign.dateIssued), scheduledDate: inputDate(campaign.scheduledDate),
       nextVaccinationDate: inputDate(campaign.nextVaccinationDate), boosterDate: inputDate(campaign.boosterDate), expiryDate: inputDate(campaign.expiryDate),
       inventorySourceTransaction: campaign.inventorySourceTransaction?._id || campaign.inventorySourceTransaction || "",
       assignments: campaign.assignments.map((item) => ({
@@ -258,6 +258,7 @@ function CampaignForm({ record, templates, animals, groups, currency, onCancel, 
 
     <Section title="3. Date and dosage" description="The scheduled date drives due-soon and overdue reminders.">
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Date issued" type="date" value={form.dateIssued} onChange={(value) => setForm({ ...form, dateIssued: value })} />
         <Field label="Scheduled date" type="date" value={form.scheduledDate} onChange={(value) => setForm({ ...form, scheduledDate: value })} required />
         <Field label="Dose" type="number" min="0" step="any" value={form.dose} onChange={(value) => setForm({ ...form, dose: value })} />
         <Field label="Dose unit" value={form.doseUnit} onChange={(value) => setForm({ ...form, doseUnit: value })} />
@@ -395,7 +396,25 @@ function AssignmentManager({ campaign, onClose, onSaved }) {
 }
 
 function CampaignDetails({ campaign, currency, onClose }) {
-  return <CrudModal title={campaign.scheduleName} onClose={onClose}><div className="space-y-5"><div className="grid gap-3 sm:grid-cols-2"><Info label="Species" value={speciesLabel(campaign.species)} /><Info label="Vaccine / treatment" value={campaign.vaccineName} /><Info label="Disease prevented" value={campaign.diseasePrevented || "Not set"} /><Info label="Due date" value={formatDate(campaign.scheduledDate)} /><Info label="Dose" value={`${campaign.dose || 0} ${campaign.doseUnit || ""}`} /><Info label="Route" value={campaign.administrationRoute || "Not set"} /><Info label="Vet / provider" value={campaign.vetName || campaign.provider || "Not set"} /><Info label="Batch" value={campaign.batchNumber || "Not set"} /><Info label="Campaign cost" value={currency.format(campaign.totalCost || 0)} /><Info label="Inventory" value={campaign.inventoryDeductedAt ? `Deducted ${campaign.inventoryQuantityUsed}` : campaign.inventorySourceTransaction ? "Linked; deducts after completion" : "Not linked"} /></div><div><div className="label">Assignments</div><div className="mt-2 space-y-2">{campaign.assignments.map((item) => <div key={item._id} className="flex items-center justify-between gap-3 rounded-md bg-field-cream p-3 text-sm"><span className="font-bold text-farm-950">{item.animal ? `${item.animal.animalId} ${item.animal.name || ""}` : `${item.group?.groupId} ${item.group?.groupName || ""} (${item.quantityTreated})`}</span><Status value={item.completionStatus} /></div>)}</div></div>{campaign.notes && <p className="rounded-md bg-farm-50 p-4 text-sm text-slate-700">{campaign.notes}</p>}</div></CrudModal>;
+  return <CrudModal title={campaign.scheduleName} onClose={onClose}>
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Info label="Species" value={(campaign.supportedSpecies?.length ? campaign.supportedSpecies : [campaign.species]).map(speciesLabel).join(", ")} />
+        <Info label="Vaccine / treatment" value={campaign.vaccineName} />
+        <Info label="Disease prevented" value={campaign.diseasePrevented || "Not set"} />
+        <Info label="Date issued" value={formatDate(campaign.dateIssued)} />
+        <Info label="Scheduled date" value={formatDate(campaign.scheduledDate)} />
+        <Info label="Dose" value={`${campaign.dose || 0} ${campaign.doseUnit || ""}`} />
+        <Info label="Route" value={campaign.administrationRoute || "Not set"} />
+        <Info label="Vet / provider" value={campaign.vetName || campaign.provider || "Not set"} />
+        <Info label="Batch" value={campaign.batchNumber || "Not set"} />
+        <Info label="Campaign cost" value={currency.format(campaign.totalCost || 0)} />
+        <Info label="Inventory" value={campaign.inventoryDeductedAt ? `Deducted ${campaign.inventoryQuantityUsed}` : campaign.inventorySourceTransaction ? "Linked; deducts after completion" : "Not linked"} />
+      </div>
+      <div><div className="label">Assignments</div><div className="mt-2 space-y-2">{campaign.assignments.map((item) => <div key={item._id} className="flex items-center justify-between gap-3 rounded-md bg-field-cream p-3 text-sm"><span className="font-bold text-farm-950">{item.animal ? `${item.animal.animalId} ${item.animal.name || ""}` : `${item.group?.groupId} ${item.group?.groupName || ""} (${item.quantityTreated})`}</span><Status value={item.completionStatus} /></div>)}</div></div>
+      {campaign.notes && <p className="rounded-md bg-farm-50 p-4 text-sm text-slate-700">{campaign.notes}</p>}
+    </div>
+  </CrudModal>;
 }
 
 function TemplateCard({ template, onUse, onCopy, onEdit, onDelete }) {

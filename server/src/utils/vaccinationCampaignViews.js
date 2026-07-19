@@ -15,6 +15,7 @@ export function campaignHistoryRecord(campaign, assignment) {
     species: campaign.species,
     vaccineName: campaign.vaccineName,
     diseasePrevented: campaign.diseasePrevented,
+    dateIssued: campaign.dateIssued,
     dateGiven: assignment.completedDate || campaign.firstVaccinationDate,
     nextDueDate: campaign.boosterDate || campaign.nextVaccinationDate || campaign.scheduledDate,
     vetName: campaign.vetName || campaign.provider,

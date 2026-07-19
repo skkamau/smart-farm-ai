@@ -27,6 +27,7 @@ export const campaignRules = [
   body("diseasePrevented").trim().notEmpty().isLength({ max: 240 }).withMessage("Disease prevented is required"),
   body("treatmentType").optional().isIn(["vaccination", "preventive_treatment"]),
   body("scheduledDate").isISO8601().toDate().withMessage("Enter a valid scheduled date"),
+  body("dateIssued").optional({ values: "falsy" }).isISO8601().toDate().withMessage("Enter a valid date issued"),
   body("firstVaccinationDate").optional({ values: "falsy" }).isISO8601().toDate(),
   body("nextVaccinationDate").optional({ values: "falsy" }).isISO8601().toDate(),
   body("boosterDate").optional({ values: "falsy" }).isISO8601().toDate(),
@@ -64,7 +65,7 @@ export const templateRules = [
 
 const campaignFields = [
   "template", "scheduleName", "species", "supportedSpecies", "customSpecies", "appliesToMultipleSpecies", "breedOrStrain", "productionType",
-  "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "recommendedTiming", "explanation", "majorSigns", "safetyNotice", "firstVaccinationDate", "scheduledDate",
+  "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "recommendedTiming", "explanation", "majorSigns", "safetyNotice", "firstVaccinationDate", "dateIssued", "scheduledDate",
   "nextVaccinationDate", "boosterDate", "boosterInterval", "recurrence", "dose", "doseUnit", "administrationRoute",
   "vetName", "provider", "batchNumber", "expiryDate", "vaccineCost", "serviceCharge", "transportCost", "otherCost",
   "costMode", "paymentMethod", "reminderSettings", "status", "assignments", "inventorySourceTransaction", "inventoryQuantityUsed", "previousCampaign", "notes"
@@ -151,7 +152,7 @@ async function syncCampaignFinance(campaign) {
     category: "Vaccination",
     vaccinationCampaign: campaign._id,
     source: "vaccination",
-    transactionDate: campaign.firstVaccinationDate || campaign.scheduledDate,
+    transactionDate: campaign.dateIssued || campaign.firstVaccinationDate || campaign.scheduledDate,
     item: campaign.vaccineName,
     description: `${campaign.scheduleName}: ${campaign.assignments.length} selected target${campaign.assignments.length === 1 ? "" : "s"}`,
     amount: campaign.totalCost,
