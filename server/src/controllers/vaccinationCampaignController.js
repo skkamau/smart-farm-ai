@@ -19,9 +19,12 @@ const completionStatuses = ["scheduled", "completed", "missed", "postponed"];
 
 export const campaignRules = [
   body("scheduleName").trim().notEmpty().isLength({ max: 160 }).withMessage("Schedule name is required"),
-  body("species").isIn(speciesOptions).withMessage("Choose a supported species"),
+  body("species").optional().isIn(speciesOptions).withMessage("Choose a supported species"),
+  body("supportedSpecies").isArray({ min: 1, max: speciesOptions.length }).withMessage("Choose at least one supported species"),
+  body("supportedSpecies.*").isIn(speciesOptions).withMessage("Choose only supported species"),
   body("customSpecies").if(body("species").equals("other")).trim().notEmpty().isLength({ max: 100 }).withMessage("Enter the species name"),
   body("vaccineName").trim().notEmpty().isLength({ max: 160 }).withMessage("Vaccine or treatment name is required"),
+  body("diseasePrevented").trim().notEmpty().isLength({ max: 240 }).withMessage("Disease prevented is required"),
   body("treatmentType").optional().isIn(["vaccination", "preventive_treatment"]),
   body("scheduledDate").isISO8601().toDate().withMessage("Enter a valid scheduled date"),
   body("firstVaccinationDate").optional({ values: "falsy" }).isISO8601().toDate(),
@@ -35,6 +38,7 @@ export const campaignRules = [
   body("otherCost").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("inventoryQuantityUsed").optional({ values: "falsy" }).isFloat({ min: 0 }),
   body("inventorySourceTransaction").optional({ values: "falsy" }).isMongoId(),
+  body("previousCampaign").optional({ values: "falsy" }).isMongoId(),
   body("costMode").optional().isIn(["total", "per_animal", "per_group"]),
   body("status").optional().isIn(campaignStatuses),
   body("assignments").isArray({ min: 1, max: 500 }).withMessage("Select between 1 and 500 animals or groups"),
@@ -49,7 +53,9 @@ export const campaignRules = [
 
 export const templateRules = [
   body("scheduleName").trim().notEmpty().isLength({ max: 160 }),
-  body("species").isIn(speciesOptions),
+  body("species").optional().isIn(speciesOptions),
+  body("supportedSpecies").isArray({ min: 1, max: speciesOptions.length }),
+  body("supportedSpecies.*").isIn(speciesOptions),
   body("customSpecies").if(body("species").equals("other")).trim().notEmpty().isLength({ max: 100 }),
   body("vaccineName").trim().notEmpty().isLength({ max: 160 }),
   body("dose").optional({ values: "falsy" }).isFloat({ min: 0 }),
@@ -57,14 +63,14 @@ export const templateRules = [
 ];
 
 const campaignFields = [
-  "template", "scheduleName", "species", "customSpecies", "appliesToMultipleSpecies", "breedOrStrain", "productionType",
-  "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "firstVaccinationDate", "scheduledDate",
+  "template", "scheduleName", "species", "supportedSpecies", "customSpecies", "appliesToMultipleSpecies", "breedOrStrain", "productionType",
+  "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "recommendedTiming", "explanation", "majorSigns", "safetyNotice", "firstVaccinationDate", "scheduledDate",
   "nextVaccinationDate", "boosterDate", "boosterInterval", "recurrence", "dose", "doseUnit", "administrationRoute",
   "vetName", "provider", "batchNumber", "expiryDate", "vaccineCost", "serviceCharge", "transportCost", "otherCost",
-  "costMode", "paymentMethod", "reminderSettings", "status", "assignments", "inventorySourceTransaction", "inventoryQuantityUsed", "notes"
+  "costMode", "paymentMethod", "reminderSettings", "status", "assignments", "inventorySourceTransaction", "inventoryQuantityUsed", "previousCampaign", "notes"
 ];
 
-const templateFields = ["scheduleName", "species", "customSpecies", "breedOrStrain", "productionType", "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "boosterInterval", "recurrence", "dose", "doseUnit", "administrationRoute", "notes"];
+const templateFields = ["templateKey", "scheduleName", "species", "supportedSpecies", "customSpecies", "breedOrStrain", "productionType", "treatmentType", "vaccineName", "diseasePrevented", "recommendedStage", "recommendedTiming", "explanation", "majorSigns", "safetyNotice", "boosterInterval", "recurrence", "dose", "doseUnit", "administrationRoute", "notes"];
 
 function pick(source, fields) {
   return fields.reduce((result, field) => {
@@ -75,9 +81,14 @@ function pick(source, fields) {
 
 export function buildCampaignPayload(source) {
   const output = pick(source, campaignFields);
-  for (const field of ["dose", "vaccineCost", "serviceCharge", "transportCost", "otherCost", "inventoryQuantityUsed"]) {
-    output[field] = Number(output[field] || 0);
+  for (const field of ["template", "inventorySourceTransaction", "previousCampaign"]) {
+    if (!output[field]) delete output[field];
   }
+  for (const field of ["dose", "vaccineCost", "serviceCharge", "transportCost", "otherCost", "inventoryQuantityUsed"]) {
+    if (output[field] !== undefined) output[field] = Number(output[field] || 0);
+  }
+  output.supportedSpecies = [...new Set((output.supportedSpecies?.length ? output.supportedSpecies : [output.species]).map(canonicalSpecies).filter(Boolean))];
+  output.species = output.species || output.supportedSpecies[0];
   output.assignments = (output.assignments || []).map((assignment) => ({
     targetType: assignment.targetType,
     animal: assignment.targetType === "individual" ? assignment.animal : null,
@@ -106,9 +117,8 @@ async function validateOwnedAssignments(user, payload, confirmMultipleSpecies) {
     ...animals.map((animal) => ({ id: animal._id, species: animal.species, category: "" })),
     ...groups.map((group) => ({ id: group._id, species: group.species, category: group.category, quantity: group.currentQuantity }))
   ];
-  const incompatible = targets.filter((target) => !isSpeciesCompatible(payload.species, target.species, target.category, payload.customSpecies));
-  if (incompatible.length && !payload.appliesToMultipleSpecies) return { error: "Selected animals do not match the schedule species" };
-  if (incompatible.length && confirmMultipleSpecies !== true) return { error: "Confirm this schedule is intentionally being applied to multiple species" };
+  const incompatible = targets.filter((target) => !isSpeciesCompatible(payload.supportedSpecies, target.species, target.category, payload.customSpecies));
+  if (incompatible.length && confirmMultipleSpecies !== true) return { error: "Confirm the incompatible species selection before saving" };
 
   for (const assignment of payload.assignments.filter((item) => item.targetType === "group")) {
     const group = groups.find((item) => String(item._id) === String(assignment.group));
@@ -213,6 +223,9 @@ export async function createCampaign(req, res, next) {
     const ownership = await validateOwnedAssignments(req.user._id, data, req.body.confirmMultipleSpecies);
     if (ownership.error) return res.status(400).json({ message: ownership.error });
     if (data.template && !(await VaccinationTemplate.exists({ _id: data.template, user: req.user._id }))) data.template = null;
+    if (data.previousCampaign && !(await VaccinationCampaign.exists({ _id: data.previousCampaign, user: req.user._id }))) {
+      return res.status(400).json({ message: "Previous vaccination campaign was not found" });
+    }
     data.status = resolveCampaignStatus(data);
     campaign = await VaccinationCampaign.create({ ...data, user: req.user._id, createdBy: req.user._id });
     await syncCampaignFinance(campaign);
@@ -297,6 +310,8 @@ export async function createTemplate(req, res, next) {
   try {
     const data = pick(req.body, templateFields);
     data.dose = Number(data.dose || 0);
+    data.supportedSpecies = [...new Set((data.supportedSpecies?.length ? data.supportedSpecies : [data.species]).map(canonicalSpecies).filter(Boolean))];
+    data.species = data.species || data.supportedSpecies[0];
     res.status(201).json(await VaccinationTemplate.create({ ...data, user: req.user._id }));
   } catch (error) { next(error); }
 }
@@ -307,6 +322,8 @@ export async function updateTemplate(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: "Invalid template identifier" });
     const data = pick(req.body, templateFields);
     data.dose = Number(data.dose || 0);
+    data.supportedSpecies = [...new Set((data.supportedSpecies?.length ? data.supportedSpecies : [data.species]).map(canonicalSpecies).filter(Boolean))];
+    data.species = data.species || data.supportedSpecies[0];
     const template = await VaccinationTemplate.findOneAndUpdate({ _id: req.params.id, user: req.user._id }, data, { new: true, runValidators: true });
     if (!template) return res.status(404).json({ message: "Vaccination template not found" });
     res.json(template);

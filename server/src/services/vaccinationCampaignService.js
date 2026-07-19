@@ -18,8 +18,9 @@ export function canonicalSpecies(value, category = "") {
 }
 
 export function isSpeciesCompatible(scheduleSpecies, targetSpecies, targetCategory = "", customSpecies = "") {
-  const schedule = canonicalSpecies(scheduleSpecies === "other" ? customSpecies : scheduleSpecies);
-  return Boolean(schedule) && schedule === canonicalSpecies(targetSpecies, targetCategory);
+  const supported = Array.isArray(scheduleSpecies) ? scheduleSpecies : [scheduleSpecies === "other" ? customSpecies : scheduleSpecies];
+  const target = canonicalSpecies(targetSpecies, targetCategory);
+  return supported.some((value) => canonicalSpecies(value === "other" ? customSpecies : value) === target);
 }
 
 export function calculateCampaignCost(input, assignments = []) {
@@ -38,7 +39,7 @@ export function resolveCampaignStatus(campaign, now = new Date()) {
   const completed = assignments.filter((item) => item.completionStatus === "completed").length;
   if (assignments.length && completed === assignments.length) return "completed";
   if (completed > 0) return "partially_completed";
-  if (assignments.length && assignments.every((item) => item.completionStatus === "missed")) return "missed";
+  if (assignments.length && assignments.every((item) => item.completionStatus === "missed")) return "overdue";
   const due = new Date(campaign.scheduledDate);
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -50,15 +51,6 @@ export function resolveCampaignStatus(campaign, now = new Date()) {
   return due <= soon ? "due_soon" : "scheduled";
 }
 
-export const systemVaccinationTemplates = [
-  { _id: "system-sheep-enterotoxaemia", system: true, scheduleName: "Sheep Enterotoxaemia", species: "sheep", vaccineName: "Enterotoxaemia", diseasePrevented: "Enterotoxaemia", recommendedStage: "Lambs from vaccinated mothers: 7 weeks, booster at 11 weeks. Confirm locally with a vet.", boosterInterval: "Annual", recurrence: "Annual", notes: "Ewes may be vaccinated 4-6 weeks before lambing on veterinary advice." },
-  { _id: "system-sheep-bluetongue", system: true, scheduleName: "Sheep Blue Tongue", species: "sheep", vaccineName: "Blue Tongue", diseasePrevented: "Blue tongue", recommendedStage: "Before rains where locally recommended", recurrence: "Risk based" },
-  { _id: "system-ruminant-rvf", system: true, scheduleName: "Sheep and Goat Rift Valley Fever", species: "sheep", appliesToMultipleSpecies: true, vaccineName: "Rift Valley Fever", diseasePrevented: "Rift Valley fever", recommendedStage: "Before rains where officially advised", recurrence: "Risk based" },
-  { _id: "system-ruminant-orf", system: true, scheduleName: "Sheep and Goat ORF", species: "sheep", appliesToMultipleSpecies: true, vaccineName: "ORF / Contagious Ecthyma", diseasePrevented: "Contagious ecthyma", recommendedStage: "Dry season where locally indicated", recurrence: "Risk based" },
-  { _id: "system-ruminant-ppr", system: true, scheduleName: "Sheep and Goat PPR", species: "goat", appliesToMultipleSpecies: true, vaccineName: "PPR", diseasePrevented: "Peste des Petits Ruminants", recommendedStage: "Follow local veterinary programme", recurrence: "Per veterinary guidance" },
-  { _id: "system-ruminant-pox", system: true, scheduleName: "Sheep and Goat Pox", species: "sheep", appliesToMultipleSpecies: true, vaccineName: "Sheep and Goat Pox", diseasePrevented: "Sheep and goat pox", recommendedStage: "Follow local veterinary programme" },
-  { _id: "system-ruminant-fmd", system: true, scheduleName: "Sheep and Goat Foot and Mouth", species: "goat", appliesToMultipleSpecies: true, vaccineName: "Foot and Mouth Disease", diseasePrevented: "Foot and mouth disease", recommendedStage: "Follow national control programme" },
-  { _id: "system-goat-ccpp", system: true, scheduleName: "Goat CCPP", species: "goat", vaccineName: "CCPP", diseasePrevented: "Contagious caprine pleuropneumonia", recommendedStage: "Follow local veterinary programme" },
-  { _id: "system-ruminant-pasteurella", system: true, scheduleName: "Sheep and Goat Pasteurella", species: "sheep", appliesToMultipleSpecies: true, vaccineName: "Pasteurella", diseasePrevented: "Pasteurellosis", recommendedStage: "Before rains where locally recommended" },
-  { _id: "system-ruminant-anthrax", system: true, scheduleName: "Sheep and Goat Anthrax", species: "sheep", appliesToMultipleSpecies: true, vaccineName: "Anthrax", diseasePrevented: "Anthrax", recommendedStage: "Follow local veterinary authority advice" }
-];
+// Global templates belong here. The supplied sheep/goat programme is private and
+// is installed for its owner by the account-specific seed script.
+export const systemVaccinationTemplates = [];

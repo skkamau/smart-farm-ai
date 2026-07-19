@@ -424,13 +424,19 @@ At API startup, an idempotent migration maps older mixed `status` values to the 
 
 ## Vaccination Campaigns
 
-Vaccination & Prevention supports Sheep, Goat, Cattle, Poultry, Pig, Rabbit, Fish, Dog, and custom species schedules. The original sheep and goat reference programmes remain available as protected system templates. They are guidance only and should be confirmed with a qualified veterinarian.
+Vaccination & Prevention supports Sheep, Goat, Cattle, Poultry, Pig, Rabbit, Fish, Dog, and custom multi-species schedules. The create form is organized into vaccination details, targets, date/dosage, costs/reminder, and notes. Template guidance never chooses animals, guesses a scheduled date, deducts inventory, or marks a campaign complete.
 
 New schedules use one `VaccinationCampaign` with embedded target assignments. Each assignment links to either an owned `Animal` or `AnimalGroup`, stores its own completion status, and records a treated quantity for groups. Legacy `VaccinationRecord` documents remain readable and editable without migration.
 
 Campaign status is calculated from assignment completion and the scheduled date. Completing some targets produces `partially_completed`; completing all produces `completed`. Upcoming and overdue campaigns appear on the Dashboard, Health page, Animal profiles, and Group profiles.
 
-Campaign costs create or update one linked Finance transaction. A vaccine inventory item can be selected from current stock. Stock is never deducted when a schedule is created; one guarded stock movement is created only after administration is recorded, and repeated completion updates cannot deduct it twice.
+Campaign costs create or update one linked Finance transaction. New schedules use one additive campaign total and do not expose inventory deduction controls. Older campaigns retain booster, recurrence, provider, batch, expiry, historical date, and inventory-link values in a collapsed **Additional details** section.
+
+The supplied sheep/goat programme is private to `samkinyanjuik@gmail.com`. Install or reconcile its ten editable templates with the one-time idempotent command below. The command stops if the account does not exist and never creates campaigns, finance records, inventory movements, or user accounts.
+
+```bash
+npm run seed:vaccination-templates --prefix server
+```
 
 ## GitHub
 

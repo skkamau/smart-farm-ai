@@ -19,6 +19,7 @@ const vaccinationCampaignSchema = new mongoose.Schema(
     template: { type: mongoose.Schema.Types.ObjectId, ref: "VaccinationTemplate", default: null },
     scheduleName: { type: String, required: true, trim: true, maxlength: 160 },
     species: { type: String, required: true, trim: true, maxlength: 80, index: true },
+    supportedSpecies: [{ type: String, trim: true, lowercase: true, maxlength: 80 }],
     customSpecies: { type: String, trim: true, maxlength: 100, default: "" },
     appliesToMultipleSpecies: { type: Boolean, default: false },
     breedOrStrain: { type: String, trim: true, maxlength: 120, default: "" },
@@ -27,6 +28,10 @@ const vaccinationCampaignSchema = new mongoose.Schema(
     vaccineName: { type: String, required: true, trim: true, maxlength: 160 },
     diseasePrevented: { type: String, trim: true, maxlength: 240, default: "" },
     recommendedStage: { type: String, trim: true, maxlength: 240, default: "" },
+    recommendedTiming: { type: String, trim: true, maxlength: 2000, default: "" },
+    explanation: { type: String, trim: true, maxlength: 2000, default: "" },
+    majorSigns: { type: String, trim: true, maxlength: 2000, default: "" },
+    safetyNotice: { type: String, trim: true, maxlength: 1000, default: "" },
     firstVaccinationDate: { type: Date, default: null },
     scheduledDate: { type: Date, required: true, index: true },
     nextVaccinationDate: { type: Date, default: null },
@@ -64,6 +69,7 @@ const vaccinationCampaignSchema = new mongoose.Schema(
     },
     assignments: { type: [assignmentSchema], validate: [(items) => items.length > 0, "Select at least one animal or group"] },
     financeTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
+    previousCampaign: { type: mongoose.Schema.Types.ObjectId, ref: "VaccinationCampaign", default: null },
     inventorySourceTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
     inventoryDeductionTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
     inventoryQuantityUsed: { type: Number, min: 0, default: 0 },
@@ -77,5 +83,12 @@ const vaccinationCampaignSchema = new mongoose.Schema(
 vaccinationCampaignSchema.index({ user: 1, scheduledDate: 1, status: 1 });
 vaccinationCampaignSchema.index({ user: 1, "assignments.animal": 1 });
 vaccinationCampaignSchema.index({ user: 1, "assignments.group": 1 });
+
+vaccinationCampaignSchema.pre("validate", function normalizeSupportedSpecies(next) {
+  const values = this.supportedSpecies?.length ? this.supportedSpecies : [this.species];
+  this.supportedSpecies = [...new Set(values.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean))];
+  if (!this.species && this.supportedSpecies.length) this.species = this.supportedSpecies[0];
+  next();
+});
 
 export default mongoose.model("VaccinationCampaign", vaccinationCampaignSchema);
