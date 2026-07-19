@@ -25,6 +25,8 @@ import VaccinationTemplate from "./models/VaccinationTemplate.js";
 import Transaction from "./models/Transaction.js";
 import { buildCampaignPayload, campaignRules } from "./controllers/vaccinationCampaignController.js";
 import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCampaignStatus, systemVaccinationTemplates } from "./services/vaccinationCampaignService.js";
+import BirthRecord from "./models/BirthRecord.js";
+import { birthRules, normalizeFather } from "./controllers/birthController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -41,6 +43,12 @@ async function animalValidationErrors(body) {
 async function campaignValidationErrors(body) {
   const request = { body };
   await Promise.all(campaignRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
+
+async function birthValidationErrors(body) {
+  const request = { body };
+  await Promise.all(birthRules.map((rule) => rule.run(request)));
   return validationResult(request).array();
 }
 
@@ -78,6 +86,22 @@ try {
   assert.equal(invalidCampaign.some((error) => error.path === "assignments"), true, "campaigns must select at least one target");
   assert.equal(isStrongPassword("weakpass"), false, "weak passwords must be rejected");
   assert.equal(isStrongPassword("StrongPass1!"), true, "strong passwords must be accepted");
+  assert.equal(normalizeFather(""), null, "an unknown father must be stored as null");
+  assert.equal(BirthRecord.schema.path("father").options.default, null, "birth records must support an unknown father");
+  assert.equal(BirthRecord.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.submissionKey === 1 && options.unique), true, "birth submissions must be idempotent per owner");
+  assert.equal(Animal.schema.path("birthRecord").instance, "ObjectId", "offspring must reference their birth record");
+  assert.equal(Animal.schema.path("birthWeight").instance, "Number", "offspring must store birth weight separately");
+  const validUnknownFatherBirth = await birthValidationErrors({
+    mother: "507f1f77bcf86cd799439011",
+    father: null,
+    birthDate: "2026-07-01",
+    numberOfOffspring: 1,
+    offspringMode: "create",
+    newOffspring: [{ animalId: "OFF-001", species: "Goat", gender: "Unknown", birthWeight: 2.5, weightUnit: "kg", healthStatus: "unknown", lifecycleStatus: "active" }]
+  });
+  assert.equal(validUnknownFatherBirth.length, 0, "birth validation must allow an unknown father and inline offspring");
+  const invalidBirthCount = await birthValidationErrors({ mother: "507f1f77bcf86cd799439011", birthDate: "2026-07-01", numberOfOffspring: 21 });
+  assert.equal(invalidBirthCount.some((error) => error.path === "numberOfOffspring"), true, "individually tracked births must enforce a reasonable offspring limit");
 
   const reset = createResetToken();
   assert.equal(reset.token.length, 64, "raw reset token should be 32 random bytes encoded as hex");

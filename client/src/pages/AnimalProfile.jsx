@@ -182,7 +182,7 @@ export default function AnimalProfile() {
           <Link className="btn-muted" to="/births"><Plus className="h-4 w-4" /> Add birth</Link>
         </div>
         <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr_1fr]">
-          <FamilyBox title="Parents" items={[animal.family?.mother, animal.family?.father]} empty="No parents linked" />
+          <ParentBox mother={animal.family?.mother} father={animal.family?.father} />
           <div className="rounded-lg border border-farm-100 bg-farm-50 p-4 text-center">
             <div className="label">Current animal</div>
             <div className="mt-2 text-lg font-bold text-farm-950">{animal.animalId}</div>
@@ -281,8 +281,10 @@ export default function AnimalProfile() {
             {(animal.birthRecords || []).map((record) => (
               <div key={record._id} className="rounded-lg border border-slate-100 p-4">
                 <div className="font-bold text-slate-800">{formatDate(record.birthDate)} - {record.numberOfOffspring} offspring</div>
-                <div className="mt-2 text-sm text-slate-600">Mother: {animalLabel(record.mother)} | Father: {animalLabel(record.father)}</div>
+                <div className="mt-2 text-sm text-slate-600">Mother: {animalLabel(record.mother)} | Father: {record.father ? animalLabel(record.father) : "Unknown"}</div>
                 <div className="mt-2 text-sm text-slate-600">Offspring: {(record.offspring || []).map(animalLabel).join(", ") || "Not linked"}</div>
+                {record.birthComplications && <div className="mt-2 text-sm text-slate-600"><span className="font-semibold">Complications:</span> {record.birthComplications}</div>}
+                {record.vetNotes && <div className="mt-1 text-sm text-slate-600"><span className="font-semibold">Vet notes:</span> {record.vetNotes}</div>}
               </div>
             ))}
             {!animal.birthRecords?.length && <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">No birth records yet.</div>}
@@ -326,6 +328,18 @@ function FamilyBox({ title, items, empty }) {
           </Link>
         ))}
         {!visible.length && <div className="text-sm text-slate-500">{empty}</div>}
+      </div>
+    </div>
+  );
+}
+
+function ParentBox({ mother, father }) {
+  return (
+    <div className="rounded-lg border border-slate-100 p-4">
+      <div className="label">Parents</div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        {mother ? <Link to={`/animals/${mother._id}`} className="rounded-md bg-white p-3 text-sm font-semibold text-slate-700 hover:bg-farm-50">Mother: {animalLabel(mother)}</Link> : <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">Mother: Not linked</div>}
+        {father ? <Link to={`/animals/${father._id}`} className="rounded-md bg-white p-3 text-sm font-semibold text-slate-700 hover:bg-farm-50">Father: {animalLabel(father)}</Link> : <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">Father: Unknown</div>}
       </div>
     </div>
   );
