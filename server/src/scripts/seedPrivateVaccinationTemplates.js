@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { connectDB } from "../config/db.js";
 import User from "../models/User.js";
 import VaccinationTemplate from "../models/VaccinationTemplate.js";
@@ -121,8 +123,8 @@ function comparable(template) {
   return Object.fromEntries(Object.keys(template).map((key) => [key, template[key]]));
 }
 
-async function seedPrivateTemplates() {
-  await connectDB();
+export async function seedPrivateTemplates({ connect = true } = {}) {
+  if (connect) await connectDB();
   const user = await User.findOne({ email: targetEmail }).select("_id email farmName role").lean();
   if (!user) throw new Error(`Target account not found: ${targetEmail}`);
 
@@ -146,12 +148,17 @@ async function seedPrivateTemplates() {
   }
 
   const total = await VaccinationTemplate.countDocuments({ user: user._id, templateKey: { $in: templates.map((template) => template.templateKey) } });
-  console.log(JSON.stringify({ account: user.email, farm: user.farmName || "Smart Farm", role: user.role, total, ...summary }, null, 2));
+  const result = { account: user.email, farm: user.farmName || "Smart Farm", role: user.role, total, ...summary };
+  console.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
-seedPrivateTemplates()
-  .catch((error) => {
-    console.error(error.message);
-    process.exitCode = 1;
-  })
-  .finally(async () => mongoose.connection.close());
+const directRun = process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+if (directRun) {
+  seedPrivateTemplates()
+    .catch((error) => {
+      console.error(error.message);
+      process.exitCode = 1;
+    })
+    .finally(async () => mongoose.connection.close());
+}
