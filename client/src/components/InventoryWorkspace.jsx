@@ -66,14 +66,16 @@ export default function InventoryWorkspace({ animals = [], groups = [], crops = 
   const expiryCount = items.filter((item) => ["Expired", "Expiring soon"].includes(item.status)).length;
 
   async function archive(item) {
-    if (!confirm(`Archive ${item.name}? Its stock history will remain available.`)) return;
-    await api.patch(`/inventory/${item._id}/archive`, { archived: true });
-    toast.success("Inventory item archived");
-    load();
+    try {
+      await api.patch(`/inventory/${item._id}/archive`, { archived: true });
+      toast.success("Inventory item archived");
+      load();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not archive inventory item");
+    }
   }
 
   async function remove(item) {
-    if (!confirm(`Delete ${item.name}? Items with stock history must be archived instead.`)) return;
     try {
       await api.delete(`/inventory/${item._id}`);
       toast.success("Inventory item deleted");
