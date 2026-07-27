@@ -23,12 +23,13 @@ import { nextGroupQuantity } from "./services/groupQuantityService.js";
 import VaccinationCampaign from "./models/VaccinationCampaign.js";
 import VaccinationTemplate from "./models/VaccinationTemplate.js";
 import Transaction from "./models/Transaction.js";
+import FinanceAuditLog from "./models/FinanceAuditLog.js";
 import { buildCampaignPayload, campaignRules } from "./controllers/vaccinationCampaignController.js";
 import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCampaignStatus, systemVaccinationTemplates } from "./services/vaccinationCampaignService.js";
 import BirthRecord from "./models/BirthRecord.js";
 import { birthRules, normalizeFather } from "./controllers/birthController.js";
 import { calculateMovementLedger, calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
-import { paymentState } from "./controllers/transactionController.js";
+import { paymentState, resetFinanceRules } from "./controllers/transactionController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -51,6 +52,12 @@ async function campaignValidationErrors(body) {
 async function birthValidationErrors(body) {
   const request = { body };
   await Promise.all(birthRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
+
+async function financeResetValidationErrors(body) {
+  const request = { body };
+  await Promise.all(resetFinanceRules.map((rule) => rule.run(request)));
   return validationResult(request).array();
 }
 
@@ -159,6 +166,9 @@ try {
   assert.equal(paidFinanceTransaction.amountOutstanding, 0, "paid transactions must store no outstanding balance");
   assert.match(paidFinanceTransaction.transactionId, /^FIN-/, "new transactions must receive a stable transaction ID");
   assert.equal(paidFinanceTransaction.sourceKey, undefined, "manual transactions must not receive a duplicate-prevention source key");
+  assert.equal((await financeResetValidationErrors({ confirmation: "RESET FINANCE" })).length, 0, "the exact Finance reset phrase must be accepted");
+  assert.equal((await financeResetValidationErrors({ confirmation: "reset finance" })).length > 0, true, "an incorrect Finance reset phrase must be rejected");
+  assert.equal(FinanceAuditLog.schema.path("action").enumValues.includes("reset"), true, "Finance resets must leave a safe audit event");
 
   process.env.NODE_ENV = "development";
   process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";

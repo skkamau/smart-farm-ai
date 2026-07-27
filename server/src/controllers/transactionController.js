@@ -5,6 +5,7 @@ import Crop from "../models/Crop.js";
 import FinanceAuditLog from "../models/FinanceAuditLog.js";
 import HealthRecord from "../models/HealthRecord.js";
 import InventoryItem from "../models/InventoryItem.js";
+import StockMovement from "../models/StockMovement.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
 import VaccinationCampaign from "../models/VaccinationCampaign.js";
@@ -79,6 +80,10 @@ export const paymentRules = [
 
 export const reversalRules = [
   body("reason").trim().notEmpty().isLength({ min: 3, max: 500 }).withMessage("Enter a reversal reason")
+];
+
+export const resetFinanceRules = [
+  body("confirmation").equals("RESET FINANCE").withMessage("Enter RESET FINANCE to confirm")
 ];
 
 function normalizePayload(source, existing = null) {
@@ -282,5 +287,27 @@ export async function deleteTransaction(req, res, next) {
     await audit(req.user._id, transaction._id, "deleted", { type: transaction.type, amount: transaction.amount, category: transaction.category });
     await transaction.deleteOne();
     res.json({ message: "Transaction deleted" });
+  } catch (error) { next(error); }
+}
+
+export async function resetFinanceData(req, res, next) {
+  try {
+    const user = req.user._id;
+    const transactionIds = await Transaction.find({ user }).distinct("_id");
+    await Promise.all([
+      HealthRecord.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
+      VaccinationRecord.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
+      VaccinationCampaign.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
+      StockMovement.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } })
+    ]);
+    const deleted = await Transaction.deleteMany({ user });
+    await FinanceAuditLog.deleteMany({ user });
+    await FinanceAuditLog.create({
+      user, action: "reset", summary: { deletedTransactions: deleted.deletedCount, resetAt: new Date() }
+    });
+    res.json({
+      message: "Finance data reset successfully",
+      deletedTransactions: deleted.deletedCount
+    });
   } catch (error) { next(error); }
 }

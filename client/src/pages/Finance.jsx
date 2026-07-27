@@ -49,6 +49,7 @@ export default function Finance() {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [paying, setPaying] = useState(null);
+  const [resetOpen, setResetOpen] = useState(false);
   const [filters, setFilters] = useState(blankFilters);
   const [period, setPeriod] = useState("this_month");
   const [loading, setLoading] = useState(true);
@@ -110,11 +111,12 @@ export default function Finance() {
         />
       )}
       {activeTab === "outstanding" && <Outstanding records={records.filter((record) => !record.reversedAt && record.amountOutstanding > 0)} onPay={setPaying} onView={setViewing} />}
-      {activeTab === "reports" && <Reports records={filterRecords(records, filters, "transactions")} inventory={inventory} filters={filters} setFilters={setFilters} />}
+      {activeTab === "reports" && <Reports records={filterRecords(records, filters, "transactions")} inventory={inventory} filters={filters} setFilters={setFilters} onReset={() => setResetOpen(true)} />}
 
       {editing && <TransactionModal record={editing} animals={animals} groups={groups} crops={crops} inventory={inventory} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       {viewing && <TransactionDetails record={viewing} onClose={() => setViewing(null)} />}
       {paying && <PaymentModal record={paying} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); load(); }} />}
+      {resetOpen && <ResetFinanceModal onClose={() => setResetOpen(false)} onReset={() => { setResetOpen(false); setActiveTab("overview"); load(); }} />}
     </div>
   );
 }
@@ -264,7 +266,7 @@ function OutstandingList({ title, records, onPay, onView }) {
   );
 }
 
-function Reports({ records, inventory, filters, setFilters }) {
+function Reports({ records, inventory, filters, setFilters, onReset }) {
   const summary = summarize(records, inventory);
   const byIncome = groupAmounts(records.filter((record) => !record.reversedAt && record.type === "income"), "category");
   const byExpense = groupAmounts(records.filter((record) => !record.reversedAt && record.type === "expense"), "category");
@@ -298,7 +300,40 @@ function Reports({ records, inventory, filters, setFilters }) {
         <div className="label">Enterprise profitability</div><h3 className="mt-1 font-black text-farm-950">Profit by farm enterprise</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{enterprises.map((item) => <div key={item.name} className="rounded-md border border-farm-100 p-3"><div className="font-black text-farm-950">{item.name}</div><div className="mt-2 text-sm text-slate-500">Income {currency.format(item.income)} - Expenses {currency.format(item.expenses)}</div><div className={`mt-2 font-black ${item.profit >= 0 ? "text-farm-700" : "text-red-700"}`}>{currency.format(item.profit)}</div></div>)}</div>
       </section>
+      <section className="rounded-md border border-red-200 bg-red-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><div className="label text-red-700">Finance data controls</div><h3 className="mt-1 font-black text-red-950">Reset all Finance data</h3><p className="mt-1 text-sm text-red-700">Deletes transactions, payments, debts, and Finance totals. Animals, crops, health records, vaccinations, and inventory stock remain.</p></div>
+          <button className="btn-muted shrink-0 border-red-300 text-red-700 hover:bg-red-100" onClick={onReset}><Trash2 className="h-4 w-4" /> Reset Finance data</button>
+        </div>
+      </section>
     </div>
+  );
+}
+
+function ResetFinanceModal({ onClose, onReset }) {
+  const [confirmation, setConfirmation] = useState("");
+  const [resetting, setResetting] = useState(false);
+  async function submit(event) {
+    event.preventDefault();
+    setResetting(true);
+    try {
+      const { data } = await api.post("/transactions/reset", { confirmation });
+      toast.success(`${data.deletedTransactions || 0} Finance transactions removed`);
+      onReset();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Could not reset Finance data");
+    } finally { setResetting(false); }
+  }
+  return (
+    <CrudModal title="Reset all Finance data" onClose={onClose}>
+      <form className="space-y-4" onSubmit={submit}>
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          This permanently removes all Finance transactions, income, expenses, payment history, receivables, and unpaid bills for your farm. Other farm records and inventory quantities will not be deleted.
+        </div>
+        <label className="space-y-1"><span className="label">Type RESET FINANCE</span><input className="input" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" /></label>
+        <div className="flex justify-end gap-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary bg-red-700 hover:bg-red-800" disabled={confirmation !== "RESET FINANCE" || resetting}>{resetting ? "Resetting..." : "Reset Finance data"}</button></div>
+      </form>
+    </CrudModal>
   );
 }
 

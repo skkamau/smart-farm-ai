@@ -5,7 +5,7 @@ const financeAuditLogSchema = new mongoose.Schema({
   transaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null, index: true },
   action: {
     type: String,
-    enum: ["created", "edited", "reversed", "deleted", "payment_recorded", "source_updated", "exported"],
+    enum: ["created", "edited", "reversed", "deleted", "payment_recorded", "source_updated", "exported", "reset"],
     required: true,
     index: true
   },
