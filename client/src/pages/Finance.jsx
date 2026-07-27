@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import CrudModal from "../components/CrudModal";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
+import InventoryWorkspace from "../components/InventoryWorkspace";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
 import { downloadReport, todayStamp } from "../utils/downloads";
@@ -87,6 +88,7 @@ const emptyRecord = {
 
 export default function Finance() {
   const [records, setRecords] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [crops, setCrops] = useState([]);
   const [animals, setAnimals] = useState([]);
   const [activeTab, setActiveTab] = useState("Overview");
@@ -95,18 +97,29 @@ export default function Finance() {
   const [filters, setFilters] = useState({ crop: "", animal: "", category: "", paymentMethod: "", dateFrom: "", dateTo: "" });
 
   function load() {
-    Promise.all([api.get("/transactions"), api.get("/crops"), api.get("/animals")])
-      .then(([transactionRes, cropRes, animalRes]) => {
+    Promise.all([api.get("/transactions"), api.get("/crops"), api.get("/animals"), api.get("/inventory")])
+      .then(([transactionRes, cropRes, animalRes, inventoryRes]) => {
         setRecords(transactionRes.data);
         setCrops(cropRes.data);
         setAnimals(animalRes.data);
+        setInventoryItems(inventoryRes.data);
       })
       .catch(() => toast.error("Could not load finance records"));
   }
 
   useEffect(load, []);
 
-  const summary = useMemo(() => buildSummary(records), [records]);
+  const summary = useMemo(() => {
+    const base = buildSummary(records);
+    base.currentInventoryValue = inventoryItems
+      .filter((item) => item.classification !== "equipment_asset")
+      .reduce((sum, item) => sum + Number(item.inventoryValue || 0), 0);
+    base.nonCurrentInventoryValue = inventoryItems
+      .filter((item) => item.classification === "equipment_asset")
+      .reduce((sum, item) => sum + Number(item.inventoryValue || 0), 0);
+    base.lowStockItems = inventoryItems.filter((item) => ["Low stock", "Out of stock"].includes(item.status)).length;
+    return base;
+  }, [records, inventoryItems]);
   const filteredRecords = useMemo(() => {
     let sectionRecords = recordsForWorkspace(activeTab, records);
     if (filters.crop) sectionRecords = sectionRecords.filter((record) => entityId(record.crop) === filters.crop);
@@ -144,7 +157,7 @@ export default function Finance() {
       {activeTab === "Expenses" && (
         <ExpensesSection records={filteredRecords} allRecords={records} summary={summary} crops={crops} animals={animals} filters={filters} setFilters={setFilters} search={search} setSearch={setSearch} onAdd={startAdd} onEdit={setEditing} onDelete={remove} />
       )}
-      {activeTab === "Inventory" && <Inventory records={filteredRecords} summary={summary} onAdd={startAdd} onEdit={setEditing} onDelete={remove} onBack={() => setActiveTab("Overview")} />}
+      {activeTab === "Inventory" && <InventoryWorkspace animals={animals} crops={crops} onBack={() => setActiveTab("Overview")} />}
       {activeTab === "Reports" && <Reports summary={summary} records={records} />}
       {activeTab === "Downloads" && <DownloadsSection filters={filters} />}
       {activeTab === "Settings" && <FinanceSettingsPanel activeTab={activeTab} />}
@@ -157,7 +170,7 @@ export default function Finance() {
 function FinancePrimaryAction({ activeTab, onAdd }) {
   if (activeTab === "Income") return <button className="btn-primary" onClick={() => onAdd("Income")}><Plus className="h-4 w-4" /> Add Income</button>;
   if (activeTab === "Expenses") return <button className="btn-primary" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add Expense</button>;
-  if (activeTab === "Inventory") return <button className="btn-primary" onClick={() => onAdd("Feed")}><Plus className="h-4 w-4" /> Add Inventory</button>;
+  if (activeTab === "Inventory") return null;
   return <button className="btn-primary" onClick={() => onAdd("Expenses")}><Plus className="h-4 w-4" /> Add record</button>;
 }
 

@@ -7,6 +7,7 @@ import { connectDB } from "./config/db.js";
 import { migrateAnimalStatuses } from "./services/animalStatusMigration.js";
 import { migrateHealthConditions } from "./services/healthConditionMigration.js";
 import { migrateUnknownAnimalGenders } from "./services/animalGenderMigration.js";
+import { migrateLegacyInventory } from "./services/inventoryMigration.js";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import animalRoutes from "./routes/animalRoutes.js";
@@ -22,6 +23,7 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
+import inventoryRoutes from "./routes/inventoryRoutes.js";
 import usageRoutes from "./routes/usageRoutes.js";
 import vaccinationRoutes from "./routes/vaccinationRoutes.js";
 import weatherRoutes from "./routes/weatherRoutes.js";
@@ -70,6 +72,7 @@ app.use("/api/breeding-records", breedingRoutes);
 app.use("/api/birth-records", birthRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/inventory", inventoryRoutes);
 app.use("/api/health-records", healthRoutes);
 app.use("/api/vaccinations", vaccinationRoutes);
 app.use("/api/weather", weatherRoutes);
@@ -81,6 +84,7 @@ connectDB()
     await migrateAnimalStatuses();
     await migrateUnknownAnimalGenders();
     await migrateHealthConditions();
+    await migrateLegacyInventory();
     app.listen(port, host, () => console.log(`API running on http://${host}:${port}`));
   })
   .catch((error) => {

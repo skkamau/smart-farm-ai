@@ -27,6 +27,7 @@ import { buildCampaignPayload, campaignRules } from "./controllers/vaccinationCa
 import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCampaignStatus, systemVaccinationTemplates } from "./services/vaccinationCampaignService.js";
 import BirthRecord from "./models/BirthRecord.js";
 import { birthRules, normalizeFather } from "./controllers/birthController.js";
+import { calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -115,6 +116,16 @@ try {
   assert.equal(smtpConfigured({ SMTP_HOST: "smtp.gmail.com", SMTP_USER: "support@example.test", SMTP_PASSWORD: "app-password" }), true, "SMTP_PASSWORD configuration must be supported");
   assert.equal(smtpConfigured({ SMTP_HOST: "smtp.gmail.com", SMTP_USER: "support@example.test" }), false, "partial SMTP configuration must not send mail");
   assert.equal(BugReport.schema.path("reportType").enumValues.includes("Payment issue"), true, "support reports must include payment issues");
+  let stock = calculateStockChange(42, "purchase", 20);
+  assert.equal(stock.newQuantity, 62, "stock purchases must increase opening quantity");
+  stock = calculateStockChange(stock.newQuantity, "used", 10);
+  assert.equal(stock.newQuantity, 52, "stock usage must reduce available quantity");
+  stock = calculateStockChange(stock.newQuantity, "used", 5);
+  assert.equal(stock.newQuantity, 47, "successive movements must preserve the running balance");
+  assert.equal(inventoryStatus({ currentQuantity: 47, minimumStockLevel: 50 }), "Low stock", "minimum levels must trigger low stock");
+  assert.equal(inventoryStatus({ currentQuantity: 0, minimumStockLevel: 50 }), "Out of stock", "zero balance must be out of stock");
+  assert.equal(classificationFor("Equipment"), "equipment_asset", "equipment must remain separate from consumable stock");
+  assert.equal(weightedAverageCost(42, 100, 20, 121), 106.7741935483871, "stock additions must use weighted-average unit cost");
 
   process.env.NODE_ENV = "development";
   process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";
