@@ -28,6 +28,7 @@ import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCa
 import BirthRecord from "./models/BirthRecord.js";
 import { birthRules, normalizeFather } from "./controllers/birthController.js";
 import { calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
+import { paymentState } from "./controllers/transactionController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -126,6 +127,23 @@ try {
   assert.equal(inventoryStatus({ currentQuantity: 0, minimumStockLevel: 50 }), "Out of stock", "zero balance must be out of stock");
   assert.equal(classificationFor("Equipment"), "equipment_asset", "equipment must remain separate from consumable stock");
   assert.equal(weightedAverageCost(42, 100, 20, 121), 106.7741935483871, "stock additions must use weighted-average unit cost");
+  assert.deepEqual(paymentState(1000, 1000, "paid"), { amountPaid: 1000, amountOutstanding: 0, paymentStatus: "paid" }, "paid transactions must have no outstanding balance");
+  assert.deepEqual(paymentState(1000, 400, "partially_paid"), { amountPaid: 400, amountOutstanding: 600, paymentStatus: "partially_paid" }, "partial payments must calculate their balance");
+  assert.deepEqual(paymentState(1000, 0, "unpaid"), { amountPaid: 0, amountOutstanding: 1000, paymentStatus: "unpaid" }, "unpaid transactions must keep the full amount outstanding");
+  assert.throws(() => paymentState(1000, 1001, "partially_paid"), /cannot exceed/, "payments must not exceed the transaction amount");
+  assert.equal(Transaction.schema.path("sourceKey").options.default, undefined, "manual transactions must not share a null unique source key");
+  assert.equal(Transaction.schema.path("payments").instance, "Array", "transactions must retain payment history");
+  assert.equal(Boolean(Transaction.schema.path("accountBalance")), false, "Finance must not introduce payment account balances");
+  const paidFinanceTransaction = new Transaction({
+    user: "507f1f77bcf86cd799439011", createdBy: "507f1f77bcf86cd799439011",
+    type: "income", financeSection: "Income", category: "Animal Sales", amount: 2500,
+    description: "Goat sale", paymentStatus: "paid"
+  });
+  await paidFinanceTransaction.validate();
+  assert.equal(paidFinanceTransaction.amountPaid, 2500, "paid transactions must synchronize amount paid before storage");
+  assert.equal(paidFinanceTransaction.amountOutstanding, 0, "paid transactions must store no outstanding balance");
+  assert.match(paidFinanceTransaction.transactionId, /^FIN-/, "new transactions must receive a stable transaction ID");
+  assert.equal(paidFinanceTransaction.sourceKey, undefined, "manual transactions must not receive a duplicate-prevention source key");
 
   process.env.NODE_ENV = "development";
   process.env.MONGODB_URI = "mongodb://example.invalid/smart-farm-ai";

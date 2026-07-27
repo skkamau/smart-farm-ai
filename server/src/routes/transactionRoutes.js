@@ -3,6 +3,10 @@ import {
   createTransaction,
   deleteTransaction,
   listTransactions,
+  paymentRules,
+  recordPayment,
+  reversalRules,
+  reverseTransaction,
   transactionRules,
   updateTransaction
 } from "../controllers/transactionController.js";
@@ -15,5 +19,7 @@ const router = express.Router();
 router.use(protect);
 router.route("/").get(optionalMongoIdQuery("crop"), optionalMongoIdQuery("animal"), validate, listTransactions).post(transactionRules, validate, createTransaction);
 router.route("/:id").put(mongoIdParam(), transactionRules, validate, updateTransaction).delete(mongoIdParam(), validate, deleteTransaction);
+router.post("/:id/payments", mongoIdParam(), paymentRules, validate, recordPayment);
+router.post("/:id/reverse", mongoIdParam(), reversalRules, validate, reverseTransaction);
 
 export default router;

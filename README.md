@@ -305,39 +305,31 @@ Allowed upload types include PDF, JPG, PNG, WEBP, CSV, XLSX, DOC, and DOCX. Maxi
 
 ## Farm Finance Ledger
 
-The Finance page is modeled around the Subukia goat shed workbook records instead of a generic accounting screen.
+Finance is available from `More > Finance` and is organized into Overview, Transactions, Income, Expenses, Outstanding Payments, and Reports.
 
-Finance is available from `More > Finance` in the bottom navigation. It includes these sections:
-
-- Overview
-- Income
-- Expenses
-- Construction
-- Equipment
-- Feed
-- Fuel
-- Consumables
-- Cash & Savings
-- Reports
-
-Records support farm-style fields such as date, item, description, quantity, unit, unit cost, amount, payment method, quantity in, quantity out, balance, month, cash, savings, remarks, and notes.
+The shared income/expense transaction model stores amount, category, description, payment method, payment status, amount paid, outstanding amount, optional due date/reference, enterprise, linked farm record, source record, creator, reversal details, and payment history. Existing legacy fields remain readable for backward compatibility.
 
 Automatic calculations include:
 
-- total cost from quantity and unit cost
-- stock balance from quantity in minus quantity out
-- income totals
-- expense totals
-- category totals
-- monthly expense totals
-- profit/loss summary
+- income, expenses, and net profit/loss
+- current-month income, expenses, and net result
+- receivables and unpaid farm bills
+- outstanding amount after partial payments
+- category and enterprise profitability
+- monthly income versus expenses
+- inventory valuation from the separate stock-movement system
+
+Payment method is descriptive only. This release does not create Cash, M-Pesa, Bank, Credit, or other payment accounts and does not calculate account balances or transfers.
 
 Crop, vet/health, and vaccination costs can now be linked to real farm records:
 
 - Crop expenses are entered from the Crops page and saved as linked Finance transactions.
 - Health/vet charges are entered from Health records and synced to Finance.
 - Vaccination costs are entered from Vaccinations and synced to Finance.
-- Finance can filter by crop, animal, category, payment method, and date.
+- Finance can filter by type, category, payment method, payment status, linked record, date, and search text.
+- Source-generated transactions use stable source keys so updates reuse the same Finance record.
+- Reversals remain visible in history and are excluded from profitability totals.
+- Reports retain CSV, Excel, PDF, and printable output.
 - Animal profiles show total health cost, vaccination cost, recent treatments, and follow-up reminders.
 
 ## Secure Admin Console

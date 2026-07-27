@@ -39,9 +39,10 @@ async function syncVaccinationFinance(record, animal) {
   const totalCost = Number(record.totalCost || 0);
   if (!totalCost) {
     if (record.financeTransaction) {
-      await Transaction.findOneAndDelete({ _id: record.financeTransaction, user: record.user });
-      record.financeTransaction = null;
-      await record.save();
+      await Transaction.findOneAndUpdate(
+        { _id: record.financeTransaction, user: record.user, reversedAt: null },
+        { reversedAt: new Date(), reversalReason: "Vaccination record cost removed", reversedBy: record.user }
+      );
     }
     return;
   }
@@ -54,10 +55,23 @@ async function syncVaccinationFinance(record, animal) {
     animal: record.animal,
     vaccinationRecord: record._id,
     source: "health",
+    sourceType: "vaccination_record",
+    sourceId: String(record._id),
+    sourceKey: `vaccination_record:${record._id}`,
+    transactionId: `FIN-VAX-${String(record._id).slice(-8).toUpperCase()}`,
+    linkedRecordType: "Vaccination record",
+    linkedRecordId: record._id,
+    enterpriseType: "Individual animal",
     transactionDate: record.dateGiven || record.createdAt || new Date(),
     item: record.vaccineName,
     description: `${animal.animalId}${animal.name ? ` - ${animal.name}` : ""}: ${record.vaccineName}`,
     amount: totalCost,
+    paymentStatus: "paid",
+    amountPaid: totalCost,
+    amountOutstanding: 0,
+    reversedAt: null,
+    reversalReason: "",
+    reversedBy: null,
     totalCost,
     serviceCharge: record.serviceCharge,
     medicineCost: record.vaccineCost,
@@ -69,7 +83,11 @@ async function syncVaccinationFinance(record, animal) {
 
   const transaction = record.financeTransaction
     ? await Transaction.findOneAndUpdate({ _id: record.financeTransaction, user: record.user }, transactionPayload, { new: true, runValidators: true })
-    : await Transaction.create(transactionPayload);
+    : await Transaction.findOneAndUpdate(
+      { user: record.user, sourceKey: transactionPayload.sourceKey },
+      transactionPayload,
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    );
 
   if (!record.financeTransaction && transaction?._id) {
     record.financeTransaction = transaction._id;
@@ -126,7 +144,10 @@ export async function deleteVaccination(req, res, next) {
   try {
     const record = await VaccinationRecord.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!record) return res.status(404).json({ message: "Vaccination record not found" });
-    if (record.financeTransaction) await Transaction.findOneAndDelete({ _id: record.financeTransaction, user: req.user._id });
+    if (record.financeTransaction) await Transaction.findOneAndUpdate(
+      { _id: record.financeTransaction, user: req.user._id, reversedAt: null },
+      { reversedAt: new Date(), reversalReason: "Originating vaccination record deleted", reversedBy: req.user._id }
+    );
     res.json({ message: "Vaccination record deleted" });
   } catch (error) {
     next(error);

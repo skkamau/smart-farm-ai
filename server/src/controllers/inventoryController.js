@@ -159,7 +159,10 @@ async function createLinkedExpense(item, movement, source, user) {
   const financeSection = item.category === "Feed" ? "Feed" : item.category === "Fuel" ? "Fuel" : item.category === "Equipment" ? "Equipment" : "Consumables";
   return Transaction.create({
     user, type: "expense", financeSection, category: item.category, source: "inventory",
-    inventoryMovement: movement._id, amount, totalCost: amount, transactionDate: movement.movementDate,
+    inventoryMovement: movement._id, sourceType: "inventory_movement", sourceId: String(movement._id),
+    sourceKey: `inventory_movement:${movement._id}`,
+    linkedRecordType: "Inventory item", linkedRecordId: item._id, enterpriseType: "Whole farm",
+    amount, totalCost: amount, paymentStatus: "paid", amountPaid: amount, amountOutstanding: 0, transactionDate: movement.movementDate,
     item: item.name, description: `Stock purchase: ${item.name}`, quantity: movement.quantity,
     unit: item.unit, unitCost: movement.unitCost, paymentMethod: movement.paymentMethod,
     supplierVendor: movement.supplier, storageLocation: item.storageLocation, notes: movement.notes

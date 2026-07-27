@@ -1,9 +1,13 @@
 import { getBackup, getReportRows, importBackupData, sendCsv, sendExcel, sendIndividualAnimal, sendIndividualCrop, sendPdf } from "../services/reportService.js";
+import FinanceAuditLog from "../models/FinanceAuditLog.js";
 
 export async function exportReport(req, res, next) {
   try {
     const { type, format } = req.params;
     const rows = await getReportRows(req.user._id, type, req.query);
+    if (["finance", "financial"].includes(type)) {
+      await FinanceAuditLog.create({ user: req.user._id, action: "exported", summary: { type, format, filters: req.query } }).catch(() => {});
+    }
     const name = `smart-farm-${type}-report-${new Date().toISOString().slice(0, 10)}`;
     if (format === "csv") return sendCsv(res, name, rows);
     if (format === "xlsx") return sendExcel(res, name, rows);

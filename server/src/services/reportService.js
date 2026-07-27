@@ -114,6 +114,7 @@ function toCsv(rows) {
 }
 
 function moneyRows(transactions) {
+  transactions = transactions.filter((item) => !item.reversedAt);
   const income = transactions.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
   const expenses = transactions.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
   const categories = transactions.filter((item) => item.type === "expense").reduce((acc, item) => {
@@ -170,6 +171,7 @@ function transactionQuery(user, filters = {}, section) {
 function transactionRows(rows) {
   return rows.map((r) => ({
     Date: r.transactionDate,
+    TransactionId: r.transactionId || `LEGACY-${String(r._id).slice(-8).toUpperCase()}`,
     Type: r.type,
     Section: r.financeSection,
     Category: r.category,
@@ -182,6 +184,17 @@ function transactionRows(rows) {
     UnitCost: r.unitCost,
     TotalCost: r.totalCost || r.amount,
     PaymentMethod: r.paymentMethod,
+    PaymentStatus: r.paymentStatus || "paid",
+    AmountPaid: r.amountPaid ?? r.amount,
+    AmountOutstanding: r.amountOutstanding || 0,
+    DueDate: r.dueDate,
+    Counterparty: r.counterparty,
+    ReferenceNumber: r.referenceNumber,
+    Enterprise: r.enterpriseType || "Whole farm",
+    LinkedRecordType: r.linkedRecordType,
+    SourceType: r.sourceType || r.source,
+    ReversedAt: r.reversedAt,
+    ReversalReason: r.reversalReason,
     SupplierVendor: r.supplierVendor,
     StorageLocation: r.storageLocation,
     InventoryStatus: r.inventoryStatus,
@@ -327,8 +340,9 @@ export async function getReportRows(user, type, filters = {}) {
       HealthRecord.countDocuments({ user }),
       VaccinationRecord.countDocuments({ user })
     ]);
-    const income = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount || 0), 0);
-    const expenses = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const activeTransactions = transactions.filter((transaction) => !transaction.reversedAt);
+    const income = activeTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const expenses = activeTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + Number(t.amount || 0), 0);
     return [
       { Metric: "Animals", Value: animals },
       { Metric: "Crops", Value: crops },

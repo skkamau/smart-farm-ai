@@ -93,9 +93,10 @@ async function syncHealthFinance(record, animal) {
   const totalCost = Number(record.totalCost || 0);
   if (!totalCost) {
     if (record.financeTransaction) {
-      await Transaction.findOneAndDelete({ _id: record.financeTransaction, user: record.user });
-      record.financeTransaction = null;
-      await record.save();
+      await Transaction.findOneAndUpdate(
+        { _id: record.financeTransaction, user: record.user, reversedAt: null },
+        { reversedAt: new Date(), reversalReason: "Health record cost removed", reversedBy: record.user }
+      );
     }
     return;
   }
@@ -108,10 +109,23 @@ async function syncHealthFinance(record, animal) {
     animal: record.animal,
     healthRecord: record._id,
     source: "health",
+    sourceType: "health_record",
+    sourceId: String(record._id),
+    sourceKey: `health_record:${record._id}`,
+    transactionId: `FIN-HLT-${String(record._id).slice(-8).toUpperCase()}`,
+    linkedRecordType: "Health record",
+    linkedRecordId: record._id,
+    enterpriseType: "Individual animal",
     transactionDate: record.recordDate,
     item: record.serviceType || record.healthCondition || "Vet/Health",
     description: `${animal.animalId}${animal.name ? ` - ${animal.name}` : ""}: ${record.diagnosis || record.healthCondition}`,
     amount: totalCost,
+    paymentStatus: "paid",
+    amountPaid: totalCost,
+    amountOutstanding: 0,
+    reversedAt: null,
+    reversalReason: "",
+    reversedBy: null,
     totalCost,
     serviceCharge: record.serviceCharge,
     medicineCost: record.medicineCost,
@@ -124,7 +138,11 @@ async function syncHealthFinance(record, animal) {
 
   const transaction = record.financeTransaction
     ? await Transaction.findOneAndUpdate({ _id: record.financeTransaction, user: record.user }, transactionPayload, { new: true, runValidators: true })
-    : await Transaction.create(transactionPayload);
+    : await Transaction.findOneAndUpdate(
+      { user: record.user, sourceKey: transactionPayload.sourceKey },
+      transactionPayload,
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    );
 
   if (!record.financeTransaction && transaction?._id) {
     record.financeTransaction = transaction._id;
@@ -183,7 +201,10 @@ export async function deleteHealthRecord(req, res, next) {
   try {
     const record = await HealthRecord.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!record) return res.status(404).json({ message: "Health record not found" });
-    if (record.financeTransaction) await Transaction.findOneAndDelete({ _id: record.financeTransaction, user: req.user._id });
+    if (record.financeTransaction) await Transaction.findOneAndUpdate(
+      { _id: record.financeTransaction, user: req.user._id, reversedAt: null },
+      { reversedAt: new Date(), reversalReason: "Originating health record deleted", reversedBy: req.user._id }
+    );
     res.json({ message: "Health record deleted" });
   } catch (error) {
     next(error);

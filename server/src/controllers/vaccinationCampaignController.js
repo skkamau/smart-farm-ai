@@ -140,9 +140,10 @@ async function populateCampaign(query) {
 
 async function syncCampaignFinance(campaign) {
   if (!campaign.totalCost) {
-    if (campaign.financeTransaction) await Transaction.deleteOne({ _id: campaign.financeTransaction, user: campaign.user });
-    campaign.financeTransaction = null;
-    await campaign.save();
+    if (campaign.financeTransaction) await Transaction.findOneAndUpdate(
+      { _id: campaign.financeTransaction, user: campaign.user, reversedAt: null },
+      { reversedAt: new Date(), reversalReason: "Vaccination campaign cost removed", reversedBy: campaign.user }
+    );
     return;
   }
   const data = {
@@ -152,10 +153,23 @@ async function syncCampaignFinance(campaign) {
     category: "Vaccination",
     vaccinationCampaign: campaign._id,
     source: "vaccination",
+    sourceType: "vaccination_campaign",
+    sourceId: String(campaign._id),
+    sourceKey: `vaccination_campaign:${campaign._id}`,
+    transactionId: `FIN-CAM-${String(campaign._id).slice(-8).toUpperCase()}`,
+    linkedRecordType: "Vaccination campaign",
+    linkedRecordId: campaign._id,
+    enterpriseType: "Whole farm",
     transactionDate: campaign.dateIssued || campaign.firstVaccinationDate || campaign.scheduledDate,
     item: campaign.vaccineName,
     description: `${campaign.scheduleName}: ${campaign.assignments.length} selected target${campaign.assignments.length === 1 ? "" : "s"}`,
     amount: campaign.totalCost,
+    paymentStatus: "paid",
+    amountPaid: campaign.totalCost,
+    amountOutstanding: 0,
+    reversedAt: null,
+    reversalReason: "",
+    reversedBy: null,
     totalCost: campaign.totalCost,
     serviceCharge: campaign.serviceCharge,
     medicineCost: campaign.vaccineCost,
@@ -166,7 +180,11 @@ async function syncCampaignFinance(campaign) {
   };
   const transaction = campaign.financeTransaction
     ? await Transaction.findOneAndUpdate({ _id: campaign.financeTransaction, user: campaign.user }, data, { new: true, runValidators: true })
-    : await Transaction.create(data);
+    : await Transaction.findOneAndUpdate(
+      { user: campaign.user, sourceKey: data.sourceKey },
+      data,
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    );
   if (!campaign.financeTransaction && transaction) {
     campaign.financeTransaction = transaction._id;
     await campaign.save();
@@ -294,7 +312,10 @@ export async function deleteCampaign(req, res, next) {
     const campaign = await VaccinationCampaign.findOne({ _id: req.params.id, user: req.user._id });
     if (!campaign) return res.status(404).json({ message: "Vaccination campaign not found" });
     if (campaign.inventoryDeductionTransaction) return res.status(409).json({ message: "Cancel completed campaigns instead of deleting their inventory history" });
-    if (campaign.financeTransaction) await Transaction.deleteOne({ _id: campaign.financeTransaction, user: req.user._id });
+    if (campaign.financeTransaction) await Transaction.findOneAndUpdate(
+      { _id: campaign.financeTransaction, user: req.user._id, reversedAt: null },
+      { reversedAt: new Date(), reversalReason: "Originating vaccination campaign deleted", reversedBy: req.user._id }
+    );
     await campaign.deleteOne();
     res.json({ message: "Vaccination campaign deleted" });
   } catch (error) { next(error); }
