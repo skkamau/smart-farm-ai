@@ -41,7 +41,7 @@ const transactionSchema = new mongoose.Schema(
     sourceKey: { type: String },
     enterpriseType: {
       type: String,
-      enum: ["Whole farm", "Individual animal", "Animal group", "Poultry", "Sheep and goats", "Cattle", "Fish", "Crop", "Field", "Other"],
+      enum: ["Whole farm", "Cattle", "Sheep", "Goats", "Sheep and goats", "Poultry", "Fish", "Crops", "Crop", "Individual animal", "Animal group", "Field", "Other"],
       default: "Whole farm",
       index: true
     },

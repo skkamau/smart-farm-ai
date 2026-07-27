@@ -332,6 +332,23 @@ Crop, vet/health, and vaccination costs can now be linked to real farm records:
 - Reports retain CSV, Excel, PDF, and printable output.
 - Animal profiles show total health cost, vaccination cost, recent treatments, and follow-up reminders.
 
+## Inventory And Stock Movements
+
+Inventory is a separate module at `More > Inventory` and `/inventory`. It is not a Finance tab or Finance form.
+
+Inventory provides Overview, Items, Stock movements, Alerts, and Reports. Item quantities are calculated from opening stock, purchases/additions, usage, and adjustments. Stock status and inventory value are calculated automatically rather than entered manually.
+
+- Opening quantity creates one opening-stock movement and immediately becomes the displayed balance.
+- Add Stock, Use Stock, Adjust Stock, View History, Edit Item, and Archive Item preserve a traceable stock ledger.
+- Current, non-current, low-stock, out-of-stock, expired, and expiring-soon views are available.
+- Stock usage may link to an animal, animal group, crop, or farm activity.
+- Inventory valuation uses current quantity multiplied by weighted-average unit cost.
+- A purchased-stock movement can optionally create one linked Finance expense.
+- Editing that purchase updates the same Finance expense through its stable source key.
+- Stock usage does not create another expense.
+- Inventory CSV reports cover current stock, valuation, alerts, expiry, and movement history.
+- Legacy inventory transactions are imported idempotently and remain available for backward compatibility.
+
 ## Secure Admin Console
 
 The admin console is separate from the farm workspace:

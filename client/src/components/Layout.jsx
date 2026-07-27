@@ -19,7 +19,7 @@ const bottomNav = [
     to: "/more",
     label: "More",
     icon: Menu,
-    match: (path) => ["/more", "/assistant", "/alerts", "/scan", "/weather", "/finance", "/settings", "/feedback"].some((item) => path.startsWith(item))
+    match: (path) => ["/more", "/assistant", "/alerts", "/scan", "/weather", "/finance", "/inventory", "/settings", "/feedback"].some((item) => path.startsWith(item))
   }
 ];
 
@@ -80,7 +80,7 @@ function featureForPath(path) {
   const matches = [
     ["/animals", "animals"], ["/health", "health"], ["/vaccinations", "vaccinations"],
     ["/breeding", "breeding"], ["/births", "births"], ["/crops", "crops"],
-    ["/finance", "finance"], ["/reports", "reports"], ["/assistant", "assistant"],
+    ["/finance", "finance"], ["/inventory", "inventory"], ["/reports", "reports"], ["/assistant", "assistant"],
     ["/alerts", "alerts"], ["/scan", "scanner"], ["/weather", "weather"],
     ["/settings", "settings"], ["/feedback", "feedback"]
   ];

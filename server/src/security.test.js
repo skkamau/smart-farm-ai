@@ -27,7 +27,7 @@ import { buildCampaignPayload, campaignRules } from "./controllers/vaccinationCa
 import { calculateCampaignCost, canonicalSpecies, isSpeciesCompatible, resolveCampaignStatus, systemVaccinationTemplates } from "./services/vaccinationCampaignService.js";
 import BirthRecord from "./models/BirthRecord.js";
 import { birthRules, normalizeFather } from "./controllers/birthController.js";
-import { calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
+import { calculateMovementLedger, calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
 import { paymentState } from "./controllers/transactionController.js";
 
 async function healthValidationErrors(body) {
@@ -127,6 +127,21 @@ try {
   assert.equal(inventoryStatus({ currentQuantity: 0, minimumStockLevel: 50 }), "Out of stock", "zero balance must be out of stock");
   assert.equal(classificationFor("Equipment"), "equipment_asset", "equipment must remain separate from consumable stock");
   assert.equal(weightedAverageCost(42, 100, 20, 121), 106.7741935483871, "stock additions must use weighted-average unit cost");
+  const inventoryLedger = calculateMovementLedger([
+    { _id: "opening", type: "opening_stock", quantity: 42, unitCost: 100, balanceAfter: 42 },
+    { _id: "purchase", type: "purchase", quantity: 20, unitCost: 121, balanceAfter: 62 },
+    { _id: "used", type: "used", quantity: 10, unitCost: 0, balanceAfter: 52 },
+    { _id: "counted", type: "adjustment", quantity: 5, unitCost: 0, balanceAfter: 47 }
+  ]);
+  assert.equal(inventoryLedger.currentQuantity, 47, "opening stock and every movement must produce one current quantity");
+  assert.equal(inventoryLedger.rows[0].balanceAfter, 42, "opening quantity 42 must immediately display as 42");
+  assert.equal(inventoryLedger.rows[3].quantityChange, -5, "stock counts must be represented as an adjustment");
+  assert.equal(inventoryLedger.averageUnitCost, 106.7741935483871, "the stock ledger must retain weighted-average purchase cost");
+  assert.throws(
+    () => calculateMovementLedger([{ _id: "used", type: "used", quantity: 1, balanceAfter: 0 }]),
+    /negative/,
+    "stock movement history must never allow negative stock"
+  );
   assert.deepEqual(paymentState(1000, 1000, "paid"), { amountPaid: 1000, amountOutstanding: 0, paymentStatus: "paid" }, "paid transactions must have no outstanding balance");
   assert.deepEqual(paymentState(1000, 400, "partially_paid"), { amountPaid: 400, amountOutstanding: 600, paymentStatus: "partially_paid" }, "partial payments must calculate their balance");
   assert.deepEqual(paymentState(1000, 0, "unpaid"), { amountPaid: 0, amountOutstanding: 1000, paymentStatus: "unpaid" }, "unpaid transactions must keep the full amount outstanding");

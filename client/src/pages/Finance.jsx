@@ -5,8 +5,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 import CrudModal from "../components/CrudModal";
-import InventoryWorkspace from "../components/InventoryWorkspace";
 import PageHeader from "../components/PageHeader";
 import api from "../services/api";
 import { currency, formatDate, inputDate } from "../utils";
@@ -18,17 +18,16 @@ const tabs = [
 ];
 
 const incomeCategories = [
-  "Animal Sales", "Milk Sales", "Egg Sales", "Crop Sales", "Fish Harvest Sales",
-  "Poultry Sales", "Breeding Services", "Farm Service Income", "Equipment Rental",
-  "Grants", "Insurance Compensation", "Other Income"
+  "Animal Sales", "Milk Sales", "Egg Sales", "Crop Sales", "Fish Sales",
+  "Poultry Sales", "Breeding Services", "Grants", "Other Income"
 ];
 const expenseCategories = [
   "Feed", "Veterinary And Health", "Vaccination", "Medicine", "Seeds", "Fertiliser",
-  "Chemicals", "Labour", "Transport", "Fuel", "Utilities", "Repairs And Maintenance",
-  "Equipment", "Rent", "Insurance", "Loan Repayment", "Farm Supplies", "Other Expenses"
+  "Chemicals", "Labour", "Transport", "Fuel", "Utilities", "Repairs",
+  "Equipment", "Rent", "Farm Supplies", "Other Expenses"
 ];
 const paymentMethods = ["Cash", "M-Pesa", "Bank transfer", "Card", "Credit", "Other"];
-const enterprises = ["Whole farm", "Individual animal", "Animal group", "Poultry", "Sheep and goats", "Cattle", "Fish", "Crop", "Field", "Other"];
+const enterprises = ["Whole farm", "Cattle", "Sheep", "Goats", "Poultry", "Fish", "Crops", "Individual animal", "Animal group", "Field", "Other"];
 const blankFilters = { search: "", type: "", category: "", paymentMethod: "", paymentStatus: "", linkedRecordType: "", dateFrom: "", dateTo: "", sort: "newest" };
 
 function blankTransaction(type = "expense") {
@@ -47,7 +46,6 @@ export default function Finance() {
   const [groups, setGroups] = useState([]);
   const [crops, setCrops] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
-  const [showInventory, setShowInventory] = useState(false);
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [paying, setPaying] = useState(null);
@@ -97,14 +95,12 @@ export default function Finance() {
     } catch (error) { toast.error(error.response?.data?.message || "Could not reverse transaction"); }
   }
 
-  if (showInventory) return <InventoryWorkspace animals={animals} crops={crops} onBack={() => setShowInventory(false)} />;
-
   return (
     <div className="space-y-4">
       <PageHeader title="Finance" eyebrow="Income, expenses and farm profitability" action={<button className="btn-primary" onClick={() => add()}><Plus className="h-4 w-4" /> Add transaction</button>} />
       <FinanceTabs active={activeTab} setActive={setActiveTab} />
 
-      {activeTab === "overview" && <Overview summary={summary} records={periodRecords} period={period} setPeriod={setPeriod} filters={filters} setFilters={setFilters} onInventory={() => setShowInventory(true)} onView={setViewing} />}
+      {activeTab === "overview" && <Overview summary={summary} records={periodRecords} period={period} setPeriod={setPeriod} filters={filters} setFilters={setFilters} onView={setViewing} />}
       {["transactions", "income", "expenses"].includes(activeTab) && (
         <Ledger
           records={ledgerRecords} allRecords={records} filters={filters} setFilters={setFilters}
@@ -133,7 +129,7 @@ function FinanceTabs({ active, setActive }) {
   );
 }
 
-function Overview({ summary, records, period, setPeriod, filters, setFilters, onInventory, onView }) {
+function Overview({ summary, records, period, setPeriod, filters, setFilters, onView }) {
   return (
     <div className="space-y-4">
       <section className="card p-4">
@@ -152,10 +148,10 @@ function Overview({ summary, records, period, setPeriod, filters, setFilters, on
         <Metric label="Total income" value={currency.format(summary.income)} tone="green" icon={ArrowDownLeft} />
         <Metric label="Total expenses" value={currency.format(summary.expenses)} tone="red" icon={ArrowUpRight} />
         <Metric label="Net profit / loss" value={currency.format(summary.net)} tone={summary.net >= 0 ? "green" : "red"} icon={WalletCards} />
-        <button className="card p-4 text-left hover:border-farm-400" onClick={onInventory}>
+        <Link className="card p-4 text-left hover:border-farm-400" to="/inventory">
           <div className="label">Inventory value</div><div className="mt-2 text-xl font-black text-farm-950">{currency.format(summary.inventoryValue)}</div>
-          <div className="mt-2 text-sm font-bold text-farm-700">Open inventory</div>
-        </button>
+          <div className="mt-2 text-sm font-bold text-farm-700">Open separate Inventory module</div>
+        </Link>
         <Metric label="Money owed to farm" value={currency.format(summary.receivables)} tone="amber" />
         <Metric label="Unpaid farm bills" value={currency.format(summary.payables)} tone="amber" />
         <Metric label="Income this month" value={currency.format(summary.monthIncome)} tone="green" />

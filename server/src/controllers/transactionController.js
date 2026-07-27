@@ -13,7 +13,7 @@ const financeSections = ["Income", "Expenses", "CropExpense", "AnimalHealth", "C
 const transactionTypes = ["income", "expense"];
 const paymentMethods = ["Cash", "M-Pesa", "Mpesa", "Bank transfer", "Bank Transfer", "Card", "Credit", "Other"];
 const paymentStatuses = ["paid", "partially_paid", "unpaid"];
-const enterprises = ["Whole farm", "Individual animal", "Animal group", "Poultry", "Sheep and goats", "Cattle", "Fish", "Crop", "Field", "Other"];
+const enterprises = ["Whole farm", "Cattle", "Sheep", "Goats", "Poultry", "Fish", "Crops", "Individual animal", "Animal group", "Field", "Other", "Sheep and goats", "Crop"];
 const linkedModels = {
   Animal, "Animal group": AnimalGroup, Crop, "Inventory item": InventoryItem,
   "Health record": HealthRecord, "Vaccination record": VaccinationRecord, "Vaccination campaign": VaccinationCampaign
