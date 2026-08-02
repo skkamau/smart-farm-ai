@@ -6,6 +6,359 @@
   color-scheme: light;
 }
 
+.receipt-preview-shell {
+  color: #17211d;
+}
+
+.receipt-paper {
+  position: relative;
+  width: 100%;
+  max-width: 210mm;
+  min-height: 260mm;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #d8dfda;
+  border-radius: 4px;
+  background: #ffffff;
+  padding: clamp(1rem, 4vw, 2.25rem);
+  box-shadow: 0 16px 45px rgba(8, 37, 26, 0.12);
+  color: #17211d;
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 2px solid #06452f;
+  padding-bottom: 1.25rem;
+}
+
+.receipt-brand {
+  display: flex;
+  min-width: 0;
+  gap: 0.85rem;
+  font-size: 0.75rem;
+}
+
+.receipt-brand img {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.receipt-brand div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.receipt-brand-name {
+  color: #013d2a;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.receipt-brand span {
+  color: #5f6b66;
+  overflow-wrap: anywhere;
+}
+
+.receipt-meta {
+  min-width: 235px;
+  text-align: right;
+}
+
+.receipt-meta h2 {
+  margin: 0 0 0.65rem;
+  color: #013d2a;
+  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.receipt-meta dl {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.receipt-meta dl div {
+  display: grid;
+  grid-template-columns: 68px minmax(130px, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.receipt-meta dt {
+  color: #5f6b66;
+  font-weight: 800;
+}
+
+.receipt-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.receipt-status {
+  display: inline-block;
+  margin-top: 0.7rem;
+  border-radius: 3px;
+  padding: 0.3rem 0.65rem;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.receipt-status-paid { background: #06452f; }
+.receipt-status-partial { background: #a16207; }
+.receipt-status-unpaid { background: #64748b; }
+.receipt-status-void { background: #991b1b; }
+
+.receipt-section {
+  margin-top: 1.35rem;
+}
+
+.receipt-section > h3 {
+  margin: 0 0 0.7rem;
+  border-bottom: 1px solid #d8dfda;
+  padding-bottom: 0.35rem;
+  color: #06452f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.receipt-customer,
+.receipt-notes,
+.receipt-void-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  margin: 0;
+  border: 1px solid #d8dfda;
+  border-radius: 4px;
+  background: #f3f7f4;
+  padding: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.receipt-customer span,
+.receipt-void-details span {
+  color: #5f6b66;
+}
+
+.receipt-table-wrap {
+  overflow-x: auto;
+}
+
+.receipt-table {
+  width: 100%;
+  min-width: 610px;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.receipt-table th {
+  border: 1px solid #013d2a;
+  background: #013d2a;
+  padding: 0.58rem 0.48rem;
+  color: #ffffff;
+  text-align: left;
+}
+
+.receipt-table td {
+  border: 1px solid #d8dfda;
+  padding: 0.65rem 0.48rem;
+  vertical-align: top;
+}
+
+.receipt-table tbody tr:nth-child(even) {
+  background: #f3f7f4;
+}
+
+.receipt-table .numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-summary {
+  width: min(100%, 360px);
+  margin: 1.35rem 0 0 auto;
+}
+
+.receipt-summary dl {
+  margin: 0;
+  border: 1px solid #d8dfda;
+}
+
+.receipt-summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #d8dfda;
+  padding: 0.52rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.receipt-summary dl div:last-child {
+  border-bottom: 0;
+}
+
+.receipt-summary dt,
+.receipt-summary dd {
+  margin: 0;
+}
+
+.receipt-summary dd {
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt-summary .receipt-total-row {
+  border-color: #013d2a;
+  background: #013d2a;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.receipt-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+}
+
+.receipt-payment-grid dt {
+  color: #5f6b66;
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.receipt-payment-grid dd {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.receipt-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-top: 2rem;
+  border-top: 1px solid #d8dfda;
+  padding-top: 0.8rem;
+  color: #5f6b66;
+  font-size: 0.66rem;
+  text-align: center;
+}
+
+.receipt-footer strong {
+  color: #17211d;
+}
+
+.receipt-void-details {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #991b1b;
+}
+
+.receipt-void-watermark {
+  position: absolute;
+  inset: 42% 0 auto;
+  z-index: 2;
+  transform: rotate(-28deg);
+  color: rgba(153, 27, 27, 0.12);
+  font-size: clamp(4.5rem, 18vw, 8rem);
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .receipt-paper {
+    padding: 1rem;
+    box-shadow: none;
+  }
+
+  .receipt-header {
+    flex-direction: column;
+  }
+
+  .receipt-meta {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .receipt-meta dl div {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+
+  .receipt-payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #sale-receipt-preview,
+  #sale-receipt-preview * {
+    visibility: visible !important;
+  }
+
+  #sale-receipt-preview {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    overflow: visible;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-table-wrap {
+    overflow: visible;
+  }
+
+  .receipt-table {
+    min-width: 0;
+  }
+
+  .receipt-table thead {
+    display: table-header-group;
+  }
+
+  .receipt-table tr,
+  .receipt-summary,
+  .receipt-payment-grid,
+  .receipt-section {
+    break-inside: avoid;
+  }
+}
+
 :root.dark {
   color-scheme: dark;
 }

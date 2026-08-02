@@ -4,5 +4,6 @@ dist
 *.log
 .DS_Store
 server/uploads/
+server/tmp/
 work-reports/
 work-records/

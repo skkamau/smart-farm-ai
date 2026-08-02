@@ -1,10 +1,10 @@
 import { body } from "express-validator";
-import PDFDocument from "pdfkit";
 import ProduceSale from "../models/ProduceSale.js";
 import ProductionRecord from "../models/ProductionRecord.js";
 import SaleReceipt from "../models/SaleReceipt.js";
 import StockMovement from "../models/StockMovement.js";
 import Transaction from "../models/Transaction.js";
+import { buildReceiptView, createReceiptPdf, safeReceiptFilename } from "../services/receiptDocumentService.js";
 import { cancelProduceSale, createProduceSale, recordProduceSalePayment, updateProduceSale, voidSaleReceiptPayment } from "../services/produceSaleService.js";
 
 const saleUnits = ["egg", "dozen", "tray", "crate", "litre", "millilitre", "kilogram", "tonne", "bag", "piece", "other"];
@@ -49,7 +49,9 @@ function salePopulate(query) {
 async function saleView(sale, userId) {
   const populated = await salePopulate(ProduceSale.findOne({ _id: sale._id || sale, user: userId }));
   if (!populated) return null;
-  const receipts = await SaleReceipt.find({ user: userId, sale: populated._id }).sort({ paymentDate: -1, createdAt: -1 });
+  const receipts = await SaleReceipt.find({ user: userId, sale: populated._id })
+    .populate("issuedBy", "name").populate("voidedBy", "name")
+    .sort({ paymentDate: -1, createdAt: -1 });
   return { ...populated.toObject(), receipts };
 }
 
@@ -130,38 +132,35 @@ export async function voidSaleReceipt(req, res, next) {
   } catch (error) { next(error); }
 }
 
-function money(value, currency) {
-  return `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+async function receiptContext(receiptId, user) {
+  const receipt = await SaleReceipt.findOne({ _id: receiptId, user: user._id })
+    .populate("sale").populate("issuedBy", "name").populate("voidedBy", "name");
+  if (!receipt) return null;
+  const transaction = await Transaction.findOne({ _id: receipt.financeTransaction, user: user._id });
+  if (!transaction) return null;
+  const payment = transaction.payments.id(receipt.paymentId);
+  return { receipt, transaction, view: buildReceiptView({ receipt, sale: receipt.sale, transaction, payment, user }) };
+}
+
+export async function getSaleReceipt(req, res, next) {
+  try {
+    const context = await receiptContext(req.params.receiptId, req.user);
+    if (!context) return res.status(404).json({ message: "Receipt not found" });
+    if (String(context.receipt.sale._id) !== req.params.id) return res.status(404).json({ message: "Receipt not found" });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(context.view);
+  } catch (error) { next(error); }
 }
 
 export async function downloadSaleReceipt(req, res, next) {
   try {
-    const receipt = await SaleReceipt.findOne({ _id: req.params.receiptId, user: req.user._id })
-      .populate("sale").populate("issuedBy", "name");
-    if (!receipt) return res.status(404).json({ message: "Receipt not found" });
-    const transaction = await Transaction.findOne({ _id: receipt.financeTransaction, user: req.user._id });
-    if (!transaction) return res.status(404).json({ message: "Receipt transaction not found" });
-    const currency = req.user.preferences?.currency || "KES";
+    const context = await receiptContext(req.params.receiptId, req.user);
+    if (!context || String(context.receipt.sale._id) !== req.params.id) return res.status(404).json({ message: "Receipt not found" });
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${receipt.receiptNumber}.pdf"`);
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeReceiptFilename(context.receipt.receiptNumber)}"`);
+    const doc = createReceiptPdf(context.view);
     doc.pipe(res);
-    doc.fillColor("#14532d").fontSize(24).text("Smart Farm AI", { align: "center" });
-    doc.fillColor("#111827").fontSize(16).text(req.user.farmName || "Smart Farm", { align: "center" });
-    doc.moveDown().fontSize(18).text(receipt.voidedAt ? "VOID RECEIPT" : "PAYMENT RECEIPT", { align: "center" });
-    doc.moveDown();
-    const rows = [
-      ["Receipt number", receipt.receiptNumber], ["Sale number", receipt.sale.saleNumber],
-      ["Customer", receipt.sale.customer], ["Date", new Date(receipt.paymentDate).toLocaleDateString("en-KE")],
-      ["Produce", receipt.sale.productName], ["Quantity", `${receipt.sale.quantity} ${receipt.sale.saleUnit}`],
-      ["Unit price", money(receipt.sale.unitPrice, currency)], ["Sale total", money(receipt.sale.totalAmount, currency)],
-      ["Amount received", money(receipt.amountReceived, currency)], ["Remaining balance", money(receipt.remainingBalance, currency)],
-      ["Payment method", receipt.paymentMethod], ["Payment reference", receipt.paymentReference || "Not provided"],
-      ["Issued by", receipt.issuedBy?.name || req.user.name]
-    ];
-    rows.forEach(([label, value]) => { doc.font("Helvetica-Bold").text(`${label}: `, { continued: true }); doc.font("Helvetica").text(String(value)); doc.moveDown(0.35); });
-    if (receipt.voidedAt) doc.moveDown().fillColor("#b91c1c").text(`Voided: ${receipt.voidReason}`);
-    doc.moveDown(2).fillColor("#475569").fontSize(9).text("Generated securely by Smart Farm AI. This receipt records money received and is not a duplicate sale.", { align: "center" });
     doc.end();
   } catch (error) { next(error); }
 }

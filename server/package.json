@@ -12,7 +12,7 @@
     "seed": "node src/seed.js",
     "seed:vaccination-templates": "node src/scripts/seedPrivateVaccinationTemplates.js",
     "create-super-admin": "node src/scripts/createSuperAdmin.js",
-    "test": "node src/security.test.js",
+    "test": "node src/security.test.js && node src/receiptDocument.test.js",
     "test:phase3": "node src/phase3.integration.test.js"
   },
   "dependencies": {
