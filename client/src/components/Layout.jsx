@@ -1,4 +1,4 @@
-import { BarChart3, Beef, HeartPulse, LogOut, Menu, Settings, Sprout } from "lucide-react";
+import { BarChart3, Beef, HeartPulse, LogOut, Menu, Settings, Sprout, Wheat } from "lucide-react";
 import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,7 @@ const bottomNav = [
   },
   { to: "/health", label: "Health", icon: HeartPulse, match: (path) => path.startsWith("/health") },
   { to: "/crops", label: "Crops", icon: Sprout, match: (path) => path.startsWith("/crops") },
+  { to: "/production", label: "Produce", icon: Wheat, match: (path) => path.startsWith("/production") },
   {
     to: "/more",
     label: "More",
@@ -56,7 +57,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-3 bottom-3 z-20 mx-auto grid max-w-2xl grid-cols-5 rounded-2xl border border-farm-100 bg-white/95 p-1 shadow-lift backdrop-blur dark:border-farm-800 dark:bg-farm-950/95">
+      <nav className="fixed inset-x-2 bottom-3 z-20 mx-auto grid max-w-3xl grid-cols-6 rounded-2xl border border-farm-100 bg-white/95 p-1 shadow-lift backdrop-blur dark:border-farm-800 dark:bg-farm-950/95">
         {bottomNav.map((item) => {
           const active = item.match(location.pathname);
           return (
@@ -82,7 +83,7 @@ function featureForPath(path) {
     ["/breeding", "breeding"], ["/births", "births"], ["/crops", "crops"],
     ["/finance", "finance"], ["/inventory", "inventory"], ["/reports", "reports"], ["/assistant", "assistant"],
     ["/alerts", "alerts"], ["/scan", "scanner"], ["/weather", "weather"],
-    ["/settings", "settings"], ["/feedback", "feedback"]
+    ["/settings", "settings"], ["/feedback", "feedback"], ["/production", "production"]
   ];
   return matches.find(([prefix]) => path.startsWith(prefix))?.[1] || null;
 }

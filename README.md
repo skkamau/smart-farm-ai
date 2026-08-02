@@ -447,6 +447,20 @@ The supplied sheep/goat programme is private to `samkinyanjuik@gmail.com`. Insta
 npm run seed:vaccination-templates --prefix server
 ```
 
+## Production - Phase 1
+
+Production is a separate farm workspace at `/production`. It records what the farm produces before sale and currently supports eggs, milk, crop harvests, fish harvests, and other produce. The form changes with the selected product type and calculates the sellable quantity on both the client and server.
+
+```text
+Sellable = produced - damaged - rejected - internal use - reserved - fed to young
+```
+
+Every record belongs to the signed-in user. The API verifies linked animals, animal groups, crops, fields, ponds, and fish groups against that same owner instead of trusting submitted IDs. Batch references are unique per user. Partial and full fish harvests require a confirmed fish count and create one idempotent group quantity event so the live group cannot be reduced twice.
+
+Phase 1 does not add produce to Inventory and does not create Finance income. `inventoryItem` and `inventoryMovement` remain empty until the Phase 2 stock integration is implemented. Produce sales, Finance income, payments, and receipts belong to Phase 3.
+
+No migration or new environment variables are required. Existing animal, crop, Inventory, and Finance records are unchanged.
+
 ## GitHub
 
 This folder is ready to commit and push.

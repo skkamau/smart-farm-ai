@@ -30,6 +30,8 @@ import BirthRecord from "./models/BirthRecord.js";
 import { birthRules, normalizeFather } from "./controllers/birthController.js";
 import { calculateMovementLedger, calculateStockChange, classificationFor, inventoryStatus, weightedAverageCost } from "./controllers/inventoryController.js";
 import { paymentState, resetFinanceRules } from "./controllers/transactionController.js";
+import ProductionRecord from "./models/ProductionRecord.js";
+import { calculateSellableQuantity, productionRules } from "./controllers/productionController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -61,9 +63,24 @@ async function financeResetValidationErrors(body) {
   return validationResult(request).array();
 }
 
+async function productionValidationErrors(body) {
+  const request = { body };
+  await Promise.all(productionRules.map((rule) => rule.run(request)));
+  return validationResult(request).array();
+}
+
 const originalEnv = { ...process.env };
 
 try {
+  assert.equal(calculateSellableQuantity({ quantityProduced: 320, quantityDamaged: 8, quantityUsedInternally: 12, quantityReserved: 30 }), 270, "egg production must calculate 270 sellable eggs");
+  assert.equal(calculateSellableQuantity({ quantityProduced: 24, quantityFedToYoung: 5, quantityUsedInternally: 2, quantityRejected: 1 }), 16, "milk production must calculate 16 sellable litres");
+  assert.throws(() => calculateSellableQuantity({ quantityProduced: 10, quantityDamaged: 11 }), /cannot exceed/, "production exclusions must never create negative sellable stock");
+  assert.equal(ProductionRecord.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.batchReference === 1 && options.unique), true, "production batch references must be unique per owner");
+  assert.equal(ProductionRecord.schema.path("inventoryMovement").options.default, null, "Phase 1 production must not create inventory movements");
+  const validEggProduction = await productionValidationErrors({ productType: "eggs", productName: "Table Eggs", sourceType: "animal_group", sourceId: "507f1f77bcf86cd799439011", productionDate: "2026-08-02", quantityProduced: 320, baseUnit: "egg", quantityDamaged: 8, quantityUsedInternally: 12, quantityReserved: 30 });
+  assert.equal(validEggProduction.length, 0, "valid egg production should pass validation");
+  const invalidFishProduction = await productionValidationErrors({ productType: "fish_harvest", productName: "Tilapia", sourceType: "fish_group", sourceId: "507f1f77bcf86cd799439011", productionDate: "2026-08-02", quantityProduced: 20, baseUnit: "kilogram", fishHarvestType: "partial", fishHarvestCount: 0 });
+  assert.equal(invalidFishProduction.length > 0, true, "partial fish harvests must include a confirmed removed count");
   let flockQuantity = 500;
   flockQuantity = nextGroupQuantity(flockQuantity, "death", 10);
   flockQuantity = nextGroupQuantity(flockQuantity, "sold", 100);

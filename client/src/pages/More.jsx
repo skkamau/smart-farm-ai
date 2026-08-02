@@ -1,4 +1,4 @@
-import { Bell, Bot, CloudSun, MessageSquareWarning, PackageSearch, QrCode, ReceiptText, Settings } from "lucide-react";
+import { Bell, Bot, CloudSun, MessageSquareWarning, PackageSearch, QrCode, ReceiptText, Settings, Wheat } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 
@@ -9,6 +9,7 @@ const moreItems = [
   { to: "/weather", label: "Weather", description: "Daily farm conditions", icon: CloudSun },
   { to: "/finance", label: "Finance", description: "Income, expenses, debts and profit", icon: ReceiptText },
   { to: "/inventory", label: "Inventory", description: "Stock, usage and low-stock alerts", icon: PackageSearch },
+  { to: "/production", label: "Production", description: "Eggs, milk, crop and fish harvests", icon: Wheat },
   { to: "/settings", label: "Profile & Settings", description: "Farm profile, theme and preferences", icon: Settings },
   { to: "/feedback", label: "Report or Suggest", description: "Report a problem or request a feature", icon: MessageSquareWarning }
 ];

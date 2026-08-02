@@ -19,6 +19,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import HealthRecords from "./pages/HealthRecords";
 import Inventory from "./pages/Inventory";
 import More from "./pages/More";
+import Production from "./pages/Production";
 import Onboarding from "./pages/Onboarding";
 import Reports from "./pages/Reports";
 import ResetPassword from "./pages/ResetPassword";
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="crops" element={<Crops />} />
         <Route path="finance" element={<Finance />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="production" element={<Production />} />
         <Route path="reports" element={<Reports />} />
         <Route path="health" element={<HealthRecords />} />
         <Route path="vaccinations" element={<Vaccinations />} />
