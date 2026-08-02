@@ -27,6 +27,7 @@ const stockMovementSchema = new mongoose.Schema(
     notes: { type: String, trim: true, maxlength: 2000 },
     financeTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
     productionRecord: { type: mongoose.Schema.Types.ObjectId, ref: "ProductionRecord", default: null, index: true },
+    produceSale: { type: mongoose.Schema.Types.ObjectId, ref: "ProduceSale", default: null, index: true },
     productionRemovalReason: {
       type: String,
       enum: ["", "household", "animal_feed", "farm_input", "seed", "incubation", "damaged", "spoiled", "missing", "donated", "other"],

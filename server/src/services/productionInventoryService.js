@@ -49,7 +49,7 @@ export async function productionAvailability(recordOrId, user) {
   if (user) match.user = user;
   const result = await StockMovement.aggregate([
     { $match: match },
-    { $group: { _id: null, available: { $sum: "$quantityChange" }, additions: { $sum: { $cond: [{ $gt: ["$quantityChange", 0] }, "$quantityChange", 0] } }, removals: { $sum: { $cond: [{ $and: [{ $lt: ["$quantityChange", 0] }, { $ne: ["$type", "transfer_out"] }] }, { $abs: "$quantityChange" }, 0] } } } }
+    { $group: { _id: null, available: { $sum: "$quantityChange" }, additions: { $sum: { $cond: [{ $gt: ["$quantityChange", 0] }, "$quantityChange", 0] } }, removals: { $sum: { $cond: [{ $and: [{ $lt: ["$quantityChange", 0] }, { $not: [{ $in: ["$type", ["transfer_out", "sold"]] }] }] }, { $abs: "$quantityChange" }, 0] } } } }
   ]);
   return result[0] || { available: 0, additions: 0, removals: 0 };
 }

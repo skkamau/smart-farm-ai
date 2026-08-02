@@ -447,7 +447,7 @@ The supplied sheep/goat programme is private to `samkinyanjuik@gmail.com`. Insta
 npm run seed:vaccination-templates --prefix server
 ```
 
-## Production - Phases 1 And 2
+## Production - Phases 1, 2 And 3
 
 Production is a separate farm workspace at `/production`. It records what the farm produces before sale and currently supports eggs, milk, crop harvests, fish harvests, and other produce. The form changes with the selected product type and calculates the sellable quantity on both the client and server.
 
@@ -463,7 +463,20 @@ The **Available Produce** view is ordered by expiry date and shows the remaining
 
 Production edits update the original Inventory addition instead of creating a duplicate. The sellable quantity cannot be reduced below stock already removed. Reversal keeps the historical record, removes untouched available stock, and refuses batches that already have linked use or loss movements. Fish harvest reversals also restore the linked group count once.
 
-Produce sales, Finance income, payments, and receipts are intentionally excluded from Phase 2 and belong to Phase 3.
+Phase 3 adds produce sales without changing the core rule that production is not income. A confirmed sale deducts the converted base quantity from one selected production batch, creates one `Sold` stock movement, and creates one linked Finance income transaction for the full sale value. Stable per-user submission keys prevent retries from deducting Inventory or creating income twice.
+
+Sales support eggs, dozens, trays, configurable crates, litres, millilitres, kilograms, tonnes, bags, pieces, and custom conversions. A sale can be unpaid, partially paid, or fully paid. Each actual payment issues one uniquely numbered PDF receipt; additional instalments update the same Finance income rather than creating new income. Voiding a receipt reverses its specific payment and preserves the receipt as voided history.
+
+The Production workspace now includes **Sales** and **Reports** tabs. Reports keep products and measurement units separate, show produced, sellable, internal-use, loss, sold, available, and revenue values, and export CSV. Unpaid sales may be cancelled to restore stock and reverse Finance income. Paid sales require their receipts/payments to be voided first. Sale-linked Finance records cannot be edited, paid, or reversed through the generic Finance API.
+
+### Phase 3 database additions
+
+- `ProduceSale` stores the selected production batch, sales-unit conversion, base stock deduction, customer, price, linked stock movement, and linked Finance transaction.
+- `SaleReceipt` stores one immutable receipt identity per payment plus void history.
+- `StockMovement.produceSale` links sold and restored stock to its sale.
+- `Transaction.source` now accepts `sale`; the unique `sourceType/sourceId` key guarantees one Finance income per sale.
+
+No new environment variables are required. Existing production records are unchanged, and no migration creates sales, payments, receipts, stock deductions, or Finance income automatically.
 
 No migration or new environment variables are required. Existing animal, crop, Inventory, and Finance records are unchanged.
 

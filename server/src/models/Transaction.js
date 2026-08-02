@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const paymentSchema = new mongoose.Schema({
+  idempotencyKey: { type: String, trim: true, maxlength: 120 },
   amount: { type: Number, min: 0, required: true },
   paymentDate: { type: Date, default: Date.now },
   paymentMethod: { type: String, trim: true },
@@ -25,7 +26,7 @@ const transactionSchema = new mongoose.Schema(
     healthRecord: { type: mongoose.Schema.Types.ObjectId, ref: "HealthRecord", default: null, index: true },
     vaccinationRecord: { type: mongoose.Schema.Types.ObjectId, ref: "VaccinationRecord", default: null, index: true },
     vaccinationCampaign: { type: mongoose.Schema.Types.ObjectId, ref: "VaccinationCampaign", default: null, index: true },
-    source: { type: String, enum: ["manual", "crop", "health", "vaccination", "inventory"], default: "manual", index: true },
+    source: { type: String, enum: ["manual", "crop", "health", "vaccination", "inventory", "sale"], default: "manual", index: true },
     inventoryMovement: { type: mongoose.Schema.Types.ObjectId, ref: "StockMovement", default: null, index: true },
     transactionId: { type: String, trim: true },
     paymentStatus: { type: String, enum: ["paid", "partially_paid", "unpaid"], default: "paid", index: true },

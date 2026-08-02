@@ -6,6 +6,7 @@ import AnimalGroup, { calculateBiomass } from "../models/AnimalGroup.js";
 import Crop from "../models/Crop.js";
 import GroupQuantityEvent from "../models/GroupQuantityEvent.js";
 import InventoryItem from "../models/InventoryItem.js";
+import ProduceSale from "../models/ProduceSale.js";
 import ProductionRecord from "../models/ProductionRecord.js";
 import StockMovement from "../models/StockMovement.js";
 import { addProductionToInventory, outgoingReasons, productionAvailability, removeProductionStock, reverseProductionInventory, transferProductionStorage, updateProductionInventory } from "../services/productionInventoryService.js";
@@ -312,6 +313,9 @@ export async function reverseProductionRecord(req, res, next) {
   try {
     const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id, status: "active" }).select("+stockVersion");
     if (!record) return res.status(404).json({ message: "Active production batch not found" });
+    if (await ProduceSale.exists({ user: req.user._id, productionRecord: record._id, status: "confirmed" })) {
+      return res.status(409).json({ message: "Cancel or resolve linked produce sales before reversing this production batch" });
+    }
     if (record.groupQuantityEvent && Number(record.fishHarvestCount || 0) > 0) {
       const idempotencyKey = `production-reversal-${record._id}`;
       fishReversalEvent = await GroupQuantityEvent.findOne({ user: req.user._id, group: record.sourceId, idempotencyKey });
@@ -372,7 +376,14 @@ export async function productionOverview(req, res, next) {
       { $unwind: "$production" }, { $match: { "production.status": "active" } },
       { $group: { _id: { productType: "$production.productType", baseUnit: "$production.baseUnit" }, available: { $sum: "$quantityChange" } } }
     ]);
+    const salesByUnit = await ProduceSale.aggregate([
+      { $match: { user: req.user._id, status: "confirmed" } },
+      { $lookup: { from: "productionrecords", localField: "productionRecord", foreignField: "_id", as: "production" } },
+      { $unwind: "$production" },
+      { $group: { _id: { productType: "$production.productType", baseUnit: "$baseUnit" }, sold: { $sum: "$baseQuantity" }, revenue: { $sum: "$totalAmount" } } }
+    ]);
     const availableLookup = new Map(inventoryByUnit.map((item) => [`${item._id.productType}:${item._id.baseUnit}`, item.available]));
-    res.json({ totalsByUnit: rows.map((row) => ({ productType: row._id.productType, baseUnit: row._id.baseUnit, ...row, available: availableLookup.get(`${row._id.productType}:${row._id.baseUnit}`) || 0, _id: undefined })), recent: recent.map((record) => ({ ...record, availableQuantity: availability.get(String(record._id)) || 0 })) });
+    const salesLookup = new Map(salesByUnit.map((item) => [`${item._id.productType}:${item._id.baseUnit}`, item]));
+    res.json({ totalsByUnit: rows.map((row) => { const key = `${row._id.productType}:${row._id.baseUnit}`; return { productType: row._id.productType, baseUnit: row._id.baseUnit, ...row, available: availableLookup.get(key) || 0, sold: salesLookup.get(key)?.sold || 0, revenue: salesLookup.get(key)?.revenue || 0, _id: undefined }; }), recent: recent.map((record) => ({ ...record, availableQuantity: availability.get(String(record._id)) || 0 })) });
   } catch (error) { next(error); }
 }

@@ -5,6 +5,7 @@ import Crop from "../models/Crop.js";
 import FinanceAuditLog from "../models/FinanceAuditLog.js";
 import HealthRecord from "../models/HealthRecord.js";
 import InventoryItem from "../models/InventoryItem.js";
+import ProduceSale from "../models/ProduceSale.js";
 import StockMovement from "../models/StockMovement.js";
 import Transaction from "../models/Transaction.js";
 import VaccinationRecord from "../models/VaccinationRecord.js";
@@ -230,6 +231,7 @@ export async function updateTransaction(req, res, next) {
   try {
     const existing = await Transaction.findOne({ _id: req.params.id, user: req.user._id });
     if (!existing) return res.status(404).json({ message: "Transaction not found" });
+    if (existing.source === "sale") return res.status(409).json({ message: "Edit produce-sale income from Production > Sales" });
     if (existing.reversedAt) return res.status(409).json({ message: "Reversed transactions cannot be edited" });
     const payload = normalizePayload(req.body, existing);
     await assertLinkedOwnership(payload, req.user._id);
@@ -244,6 +246,7 @@ export async function recordPayment(req, res, next) {
   try {
     const transaction = await Transaction.findOne({ _id: req.params.id, user: req.user._id, reversedAt: null });
     if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+    if (transaction.source === "sale") return res.status(409).json({ message: "Record produce-sale payments from Production > Sales so a receipt is issued" });
     const current = compatibleView(transaction);
     const paymentAmount = Number(req.body.amount);
     if (paymentAmount > current.amountOutstanding) return res.status(400).json({ message: "Payment exceeds the outstanding amount" });
@@ -266,6 +269,8 @@ export async function recordPayment(req, res, next) {
 
 export async function reverseTransaction(req, res, next) {
   try {
+    const linkedSale = await Transaction.exists({ _id: req.params.id, user: req.user._id, source: "sale" });
+    if (linkedSale) return res.status(409).json({ message: "Cancel the produce sale from Production > Sales" });
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id, reversedAt: null },
       { reversedAt: new Date(), reversalReason: scalar(req.body.reason, 500), reversedBy: req.user._id },
@@ -293,12 +298,16 @@ export async function deleteTransaction(req, res, next) {
 export async function resetFinanceData(req, res, next) {
   try {
     const user = req.user._id;
+    if (await ProduceSale.exists({ user, status: "confirmed" })) {
+      return res.status(409).json({ message: "Cancel active produce sales before resetting Finance data" });
+    }
     const transactionIds = await Transaction.find({ user }).distinct("_id");
     await Promise.all([
       HealthRecord.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
       VaccinationRecord.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
       VaccinationCampaign.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
-      StockMovement.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } })
+      StockMovement.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } }),
+      ProduceSale.updateMany({ user, financeTransaction: { $in: transactionIds } }, { $set: { financeTransaction: null } })
     ]);
     const deleted = await Transaction.deleteMany({ user });
     await FinanceAuditLog.deleteMany({ user });

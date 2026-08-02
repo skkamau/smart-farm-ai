@@ -35,6 +35,10 @@ import { calculateSellableQuantity, productionRules, removalRules, transferRules
 import InventoryItem from "./models/InventoryItem.js";
 import StockMovement from "./models/StockMovement.js";
 import { outgoingReasons, productionProduceKey } from "./services/productionInventoryService.js";
+import ProduceSale from "./models/ProduceSale.js";
+import SaleReceipt from "./models/SaleReceipt.js";
+import { saleAmounts, saleConversion } from "./services/produceSaleService.js";
+import { salePaymentRules, saleRules } from "./controllers/produceSaleController.js";
 
 async function healthValidationErrors(body) {
   const request = { body };
@@ -95,6 +99,18 @@ try {
   assert.equal((await rulesValidationErrors(removalRules, { reason: "spoiled", quantity: 2, movementDate: "2026-08-02", idempotencyKey: "removal-1" })).length, 0, "valid produce removals must pass validation");
   assert.equal((await rulesValidationErrors(removalRules, { reason: "sold", quantity: 2, idempotencyKey: "removal-2" })).length > 0, true, "Phase 2 must not treat produce sales as internal-use removals");
   assert.equal((await rulesValidationErrors(transferRules, { storageLocation: "Cold room A", movementDate: "2026-08-02", idempotencyKey: "transfer-1" })).length, 0, "valid storage transfers must pass validation");
+  assert.equal(saleConversion("egg", "dozen"), 12, "a dozen must deduct twelve base eggs");
+  assert.equal(saleConversion("egg", "tray"), 30, "a tray must deduct thirty base eggs");
+  assert.equal(saleConversion("litre", "millilitre"), 0.001, "millilitre sales must convert to litre inventory");
+  assert.deepEqual(saleAmounts({ quantity: 3, unitPrice: 450, saleUnit: "tray" }, "egg"), { quantity: 3, unitPrice: 450, conversionToBase: 30, baseQuantity: 90, totalAmount: 1350 }, "sale totals and stock deductions must use separate units");
+  assert.equal(ProduceSale.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.idempotencyKey === 1 && options.unique), true, "sales must reject duplicate submissions per owner");
+  assert.equal(SaleReceipt.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.paymentId === 1 && options.unique), true, "one payment may issue only one receipt");
+  assert.equal(StockMovement.schema.path("produceSale").instance, "ObjectId", "sold stock must link back to its produce sale");
+  assert.equal(Transaction.schema.path("source").enumValues.includes("sale"), true, "Finance must recognize sale-sourced income");
+  const validSale = await rulesValidationErrors(saleRules, { productionRecord: "507f1f77bcf86cd799439011", saleUnit: "tray", quantity: 3, unitPrice: 450, saleDate: "2026-08-02", idempotencyKey: "sale-1", paymentMethod: "M-Pesa" });
+  assert.equal(validSale.length, 0, "valid produce sales must pass validation");
+  const invalidPayment = await rulesValidationErrors(salePaymentRules, { amount: -10, paymentMethod: "Cash", idempotencyKey: "payment-1" });
+  assert.equal(invalidPayment.length > 0, true, "negative sale payments must be rejected");
   const validEggProduction = await productionValidationErrors({ productType: "eggs", productName: "Table Eggs", sourceType: "animal_group", sourceId: "507f1f77bcf86cd799439011", productionDate: "2026-08-02", quantityProduced: 320, baseUnit: "egg", quantityDamaged: 8, quantityUsedInternally: 12, quantityReserved: 30 });
   assert.equal(validEggProduction.length, 0, "valid egg production should pass validation");
   const invalidFishProduction = await productionValidationErrors({ productType: "fish_harvest", productName: "Tilapia", sourceType: "fish_group", sourceId: "507f1f77bcf86cd799439011", productionDate: "2026-08-02", quantityProduced: 20, baseUnit: "kilogram", fishHarvestType: "partial", fishHarvestCount: 0 });
