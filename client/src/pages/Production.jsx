@@ -1,4 +1,4 @@
-import { ArrowRightLeft, CreditCard, Download, Droplets, Edit, Egg, Eye, Fish, MinusCircle, Plus, RotateCcw, Scale, ShoppingCart, Sprout, Warehouse, XCircle } from "lucide-react";
+import { ArrowRightLeft, CreditCard, Download, Droplets, Edit, Egg, Eye, Fish, MinusCircle, Plus, Scale, ShoppingCart, Sprout, Trash2, Warehouse, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import DataTable from "../components/DataTable";
@@ -42,7 +42,7 @@ export default function Production() {
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [transferring, setTransferring] = useState(null);
-  const [reversing, setReversing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [selling, setSelling] = useState(null);
   const [viewingSale, setViewingSale] = useState(null);
@@ -76,15 +76,15 @@ export default function Production() {
     </div>
     {tab === "overview" && <Overview overview={overview} loading={loading} onRecord={() => setTab("record")} />}
     {tab === "record" && <ProductionForm animals={animals} groups={groups} crops={crops} onSaved={() => { setTab("history"); load(); }} />}
-    {tab === "available" && <AvailableProduce records={available} loading={loading} onSale={setSelling} onRemove={setRemoving} onTransfer={setTransferring} onView={setViewing} />}
+    {tab === "available" && <AvailableProduce records={available} loading={loading} onSale={setSelling} onRemove={setRemoving} onTransfer={setTransferring} onView={setViewing} onDelete={setDeleting} />}
     {tab === "sales" && <Sales sales={sales} loading={loading} onView={setViewingSale} onEdit={setEditingSale} onPay={setPayingSale} onCancel={setCancellingSale} />}
     {tab === "losses" && <RemovalHistory movements={removals} loading={loading} />}
-    {tab === "history" && <History records={records} filters={filters} setFilters={setFilters} loading={loading} onEdit={setEditing} onReverse={setReversing} onView={setViewing} />}
+    {tab === "history" && <History records={records} filters={filters} setFilters={setFilters} loading={loading} onEdit={setEditing} onDelete={setDeleting} onView={setViewing} />}
     {tab === "reports" && <ProductionReports report={report} filters={filters} loading={loading} />}
     {editing && <CrudModal title={`Edit production - ${editing.batchReference}`} onClose={() => setEditing(null)}><ProductionForm initial={editing} animals={animals} groups={groups} crops={crops} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} /></CrudModal>}
     {removing && <RemovalModal record={removing} onClose={() => setRemoving(null)} onSaved={() => { setRemoving(null); load(); }} />}
     {transferring && <TransferModal record={transferring} onClose={() => setTransferring(null)} onSaved={() => { setTransferring(null); load(); }} />}
-    {reversing && <ReverseModal record={reversing} onClose={() => setReversing(null)} onSaved={() => { setReversing(null); load(); }} />}
+    {deleting && <DeleteProductModal record={deleting} onClose={() => setDeleting(null)} onSaved={() => { setDeleting(null); load(); }} />}
     {viewing && <BatchHistoryModal record={viewing} onClose={() => setViewing(null)} />}
     {selling && <SaleModal batch={selling} onClose={() => setSelling(null)} onSaved={() => { setSelling(null); setTab("sales"); load(); }} />}
     {editingSale && <SaleModal sale={editingSale} batch={available.find((item) => item._id === (editingSale.productionRecord?._id || editingSale.productionRecord))} onClose={() => setEditingSale(null)} onSaved={() => { setEditingSale(null); load(); }} />}
@@ -171,11 +171,11 @@ function ProductionForm({ initial, animals, groups, crops, onSaved, onCancel }) 
   </form>;
 }
 
-function History({ records, filters, setFilters, loading, onEdit, onReverse, onView }) {
-  return <div><div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"><input className="input" placeholder="Search product, batch, source" value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} /><select className="input" value={filters.productType} onChange={(event) => setFilters({ ...filters, productType: event.target.value })}><option value="">All products</option>{productOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><Field label="From" type="date" value={filters.from} onChange={(value) => setFilters({ ...filters, from: value })} /><Field label="To" type="date" value={filters.to} onChange={(value) => setFilters({ ...filters, to: value })} /></div>{loading ? <div className="card p-8 text-center text-slate-500">Loading history...</div> : <ProductionTable records={records} onEdit={onEdit} onReverse={onReverse} onView={onView} />}</div>;
+function History({ records, filters, setFilters, loading, onEdit, onDelete, onView }) {
+  return <div><div className="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"><input className="input" placeholder="Search product, batch, source" value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} /><select className="input" value={filters.productType} onChange={(event) => setFilters({ ...filters, productType: event.target.value })}><option value="">All products</option>{productOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><Field label="From" type="date" value={filters.from} onChange={(value) => setFilters({ ...filters, from: value })} /><Field label="To" type="date" value={filters.to} onChange={(value) => setFilters({ ...filters, to: value })} /></div>{loading ? <div className="card p-8 text-center text-slate-500">Loading history...</div> : <ProductionTable records={records} onEdit={onEdit} onDelete={onDelete} onView={onView} />}</div>;
 }
 
-function ProductionTable({ records, onEdit, onReverse, onView }) {
+function ProductionTable({ records, onEdit, onDelete, onView }) {
   return <DataTable rows={records} emptyText="No production records match this view." columns={[
     { key: "productionDate", label: "Date", render: (row) => new Date(row.productionDate).toLocaleDateString() },
     { key: "productName", label: "Product", render: (row) => <div><div className="font-black text-farm-950 dark:text-white">{row.productName}</div><div className="text-xs text-slate-500">{row.batchReference}</div></div> },
@@ -185,15 +185,15 @@ function ProductionTable({ records, onEdit, onReverse, onView }) {
     { key: "availableQuantity", label: "Available", render: (row) => formatQuantity(row.availableQuantity || 0, row.baseUnit) },
     { key: "storageLocation", label: "Storage", render: (row) => row.storageLocation || "Not set" },
     { key: "status", label: "Status", render: (row) => <span className={`badge ${row.status === "active" ? "bg-farm-50 text-farm-700" : "bg-slate-100 text-slate-600"}`}>{label(row.status)}</span> }
-  ]} actions={onView ? (row) => <div className="flex justify-end gap-2"><button className="btn-muted px-2" onClick={() => onView(row)} aria-label="View batch history"><Eye className="h-4 w-4" /></button>{row.status === "active" && <button className="btn-muted px-2" onClick={() => onEdit(row)} aria-label="Edit production"><Edit className="h-4 w-4" /></button>}{row.status === "active" && <button className="btn-muted px-2 text-red-700" onClick={() => onReverse(row)} aria-label="Reverse production"><RotateCcw className="h-4 w-4" /></button>}</div> : undefined} />;
+  ]} actions={onView ? (row) => <div className="flex justify-end gap-2"><button className="btn-muted px-2" onClick={() => onView(row)} aria-label="View batch history" title="View history"><Eye className="h-4 w-4" /></button>{row.status === "active" && <button className="btn-muted px-2" onClick={() => onEdit(row)} aria-label="Edit production" title="Edit product"><Edit className="h-4 w-4" /></button>}{row.status === "active" && <button className="btn-muted px-2 text-red-700" onClick={() => onDelete(row)} aria-label="Delete product" title="Delete product"><Trash2 className="h-4 w-4" /></button>}</div> : undefined} />;
 }
 
-function AvailableProduce({ records, loading, onSale, onRemove, onTransfer, onView }) {
+function AvailableProduce({ records, loading, onSale, onRemove, onTransfer, onView, onDelete }) {
   if (loading) return <div className="card p-8 text-center text-slate-500">Loading available produce...</div>;
   if (!records.length) return <div className="card p-8 text-center"><Warehouse className="mx-auto h-9 w-9 text-farm-700" /><h2 className="mt-3 text-lg font-black text-farm-950 dark:text-white">No sellable produce available</h2></div>;
   return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{records.map((record) => {
     const expiryState = expiryStatus(record.expiryDate);
-    return <article className="card p-4" key={record._id}><div className="flex items-start justify-between gap-3"><div><div className="label">{record.batchReference}</div><h2 className="mt-1 text-lg font-black text-farm-950 dark:text-white">{record.productName}</h2><p className="mt-1 text-sm text-slate-500">{record.sourceLabel}</p></div>{expiryState && <span className={`badge ${expiryState === "Expired" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{expiryState}</span>}</div><div className="mt-4 rounded-md bg-field-sage p-4 dark:bg-farm-900"><div className="label">Available quantity</div><div className="mt-1 text-2xl font-black text-farm-950 dark:text-white">{formatQuantity(record.availableQuantity, record.baseUnit)}</div></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><Info label="Produced" value={new Date(record.productionDate).toLocaleDateString()} /><Info label="Storage" value={record.storageLocation || "Not set"} />{record.expiryDate && <Info label="Expiry" value={new Date(record.expiryDate).toLocaleDateString()} />}</div><button className="btn-primary mt-4 w-full justify-center" onClick={() => onSale(record)}><ShoppingCart className="h-4 w-4" /> Create sale</button><div className="mt-2 grid grid-cols-3 gap-2"><button className="btn-muted px-2" onClick={() => onRemove(record)}><MinusCircle className="h-4 w-4" /> Use</button><button className="btn-muted px-2" onClick={() => onTransfer(record)}><ArrowRightLeft className="h-4 w-4" /> Move</button><button className="btn-muted px-2" onClick={() => onView(record)}><Eye className="h-4 w-4" /> History</button></div></article>;
+    return <article className="card p-4" key={record._id}><div className="flex items-start justify-between gap-3"><div><div className="label">{record.batchReference}</div><h2 className="mt-1 text-lg font-black text-farm-950 dark:text-white">{record.productName}</h2><p className="mt-1 text-sm text-slate-500">{record.sourceLabel}</p></div>{expiryState && <span className={`badge ${expiryState === "Expired" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}>{expiryState}</span>}</div><div className="mt-4 rounded-md bg-field-sage p-4 dark:bg-farm-900"><div className="label">Available quantity</div><div className="mt-1 text-2xl font-black text-farm-950 dark:text-white">{formatQuantity(record.availableQuantity, record.baseUnit)}</div></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><Info label="Produced" value={new Date(record.productionDate).toLocaleDateString()} /><Info label="Storage" value={record.storageLocation || "Not set"} />{record.expiryDate && <Info label="Expiry" value={new Date(record.expiryDate).toLocaleDateString()} />}</div><button className="btn-primary mt-4 w-full justify-center" onClick={() => onSale(record)}><ShoppingCart className="h-4 w-4" /> Create sale</button><div className="mt-2 grid grid-cols-2 gap-2"><button className="btn-muted px-2" onClick={() => onRemove(record)}><MinusCircle className="h-4 w-4" /> Use</button><button className="btn-muted px-2" onClick={() => onTransfer(record)}><ArrowRightLeft className="h-4 w-4" /> Move</button><button className="btn-muted px-2" onClick={() => onView(record)}><Eye className="h-4 w-4" /> History</button><button className="btn-muted px-2 text-red-700" onClick={() => onDelete(record)}><Trash2 className="h-4 w-4" /> Delete</button></div></article>;
   })}</div>;
 }
 
@@ -307,10 +307,10 @@ function ProductionReports({ report, filters, loading }) {
   return <div className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black text-farm-950 dark:text-white">Production and sales report</h2><p className="text-sm text-slate-500">Quantities stay grouped by product and unit.</p></div><button className="btn-primary" onClick={downloadCsv}><Download className="h-4 w-4" /> Download CSV</button></div><DataTable rows={report.rows} emptyText="No report data for this period." columns={[{ key: "product", label: "Product" }, { key: "unit", label: "Unit", render: (row) => label(row.unit) }, { key: "produced", label: "Produced" }, { key: "sellable", label: "Sellable" }, { key: "internal", label: "Internal" }, { key: "losses", label: "Losses" }, { key: "sold", label: "Sold" }, { key: "remaining", label: "Remaining" }, { key: "revenue", label: "Revenue", render: (row) => currency.format(row.revenue) }]} /></div>;
 }
 
-function ReverseModal({ record, onClose, onSaved }) {
+function DeleteProductModal({ record, onClose, onSaved }) {
   const [reason, setReason] = useState(""); const [saving, setSaving] = useState(false);
-  async function submit(event) { event.preventDefault(); setSaving(true); try { await api.post(`/production/${record._id}/reverse`, { reason }); toast.success("Production reversed"); onSaved(); } catch (error) { toast.error(error.response?.data?.message || "Could not reverse production"); } finally { setSaving(false); } }
-  return <CrudModal title={`Reverse ${record.batchReference}`} onClose={onClose}><form className="space-y-4" onSubmit={submit}><div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">The original record and stock history will remain. Batches with linked usage, losses, or sales cannot be reversed.</div><label className="space-y-1"><span className="label">Reason</span><textarea className="input min-h-24" minLength="3" maxLength="500" required value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="flex justify-end gap-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary" disabled={saving}>{saving ? "Reversing..." : "Reverse production"}</button></div></form></CrudModal>;
+  async function submit(event) { event.preventDefault(); setSaving(true); try { await api.post(`/production/${record._id}/reverse`, { reason }); toast.success("Product deleted from active production"); onSaved(); } catch (error) { toast.error(error.response?.data?.message || "Could not delete product"); } finally { setSaving(false); } }
+  return <CrudModal title={`Delete ${record.productName}`} onClose={onClose}><form className="space-y-4" onSubmit={submit}><div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900"><strong>{record.batchReference}</strong> will be removed from available production and its remaining stock will be reversed. Its audit history will remain. Products with linked sales, losses, or usage cannot be deleted.</div><label className="space-y-1"><span className="label">Reason for deletion</span><textarea className="input min-h-24" minLength="3" maxLength="500" required value={reason} onChange={(event) => setReason(event.target.value)} placeholder="For example: entered by mistake" /></label><div className="flex justify-end gap-2"><button type="button" className="btn-muted" onClick={onClose}>Cancel</button><button className="btn-primary bg-red-700 hover:bg-red-800" disabled={saving}><Trash2 className="h-4 w-4" /> {saving ? "Deleting..." : "Delete product"}</button></div></form></CrudModal>;
 }
 
 function BatchHistoryModal({ record, onClose }) {
