@@ -26,12 +26,20 @@ const stockMovementSchema = new mongoose.Schema(
     reason: { type: String, trim: true, maxlength: 240 },
     notes: { type: String, trim: true, maxlength: 2000 },
     financeTransaction: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", default: null },
+    productionRecord: { type: mongoose.Schema.Types.ObjectId, ref: "ProductionRecord", default: null, index: true },
+    productionRemovalReason: {
+      type: String,
+      enum: ["", "household", "animal_feed", "farm_input", "seed", "incubation", "damaged", "spoiled", "missing", "donated", "other"],
+      default: ""
+    },
+    sourceKey: { type: String, trim: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
   },
   { timestamps: true }
 );
 
 stockMovementSchema.index({ user: 1, item: 1, movementDate: -1 });
+stockMovementSchema.index({ user: 1, sourceKey: 1 }, { unique: true, sparse: true });
 
 export { movementTypes };
 export default mongoose.model("StockMovement", stockMovementSchema);

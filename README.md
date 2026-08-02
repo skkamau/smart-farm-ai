@@ -447,7 +447,7 @@ The supplied sheep/goat programme is private to `samkinyanjuik@gmail.com`. Insta
 npm run seed:vaccination-templates --prefix server
 ```
 
-## Production - Phase 1
+## Production - Phases 1 And 2
 
 Production is a separate farm workspace at `/production`. It records what the farm produces before sale and currently supports eggs, milk, crop harvests, fish harvests, and other produce. The form changes with the selected product type and calculates the sellable quantity on both the client and server.
 
@@ -457,7 +457,13 @@ Sellable = produced - damaged - rejected - internal use - reserved - fed to youn
 
 Every record belongs to the signed-in user. The API verifies linked animals, animal groups, crops, fields, ponds, and fish groups against that same owner instead of trusting submitted IDs. Batch references are unique per user. Partial and full fish harvests require a confirmed fish count and create one idempotent group quantity event so the live group cannot be reduced twice.
 
-Phase 1 does not add produce to Inventory and does not create Finance income. `inventoryItem` and `inventoryMovement` remain empty until the Phase 2 stock integration is implemented. Produce sales, Finance income, payments, and receipts belong to Phase 3.
+Phase 2 links each active production batch to one reusable Produce item in Inventory. Only the calculated sellable quantity is added. The link is idempotent, so retries and server restarts cannot add the same batch twice. Existing Phase 1 records are reconciled automatically at server startup without changing their production history.
+
+The **Available Produce** view is ordered by expiry date and shows the remaining quantity for each batch. A user can record household use, animal feed, farm input, seed, incubation, damage, spoilage, missing stock, donations, or another reason. These actions create traceable stock movements and never create Finance income. Produce can also be moved to a new storage location; the transfer is represented by paired, net-zero stock movements.
+
+Production edits update the original Inventory addition instead of creating a duplicate. The sellable quantity cannot be reduced below stock already removed. Reversal keeps the historical record, removes untouched available stock, and refuses batches that already have linked use or loss movements. Fish harvest reversals also restore the linked group count once.
+
+Produce sales, Finance income, payments, and receipts are intentionally excluded from Phase 2 and belong to Phase 3.
 
 No migration or new environment variables are required. Existing animal, crop, Inventory, and Finance records are unchanged.
 

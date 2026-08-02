@@ -5,7 +5,10 @@ import Animal from "../models/Animal.js";
 import AnimalGroup, { calculateBiomass } from "../models/AnimalGroup.js";
 import Crop from "../models/Crop.js";
 import GroupQuantityEvent from "../models/GroupQuantityEvent.js";
+import InventoryItem from "../models/InventoryItem.js";
 import ProductionRecord from "../models/ProductionRecord.js";
+import StockMovement from "../models/StockMovement.js";
+import { addProductionToInventory, outgoingReasons, productionAvailability, removeProductionStock, reverseProductionInventory, transferProductionStorage, updateProductionInventory } from "../services/productionInventoryService.js";
 
 export const productTypes = ["eggs", "milk", "crop_harvest", "fish_harvest", "other_produce"];
 export const sourceTypes = ["individual_animal", "animal_group", "crop", "field", "pond", "fish_group", "other"];
@@ -42,6 +45,24 @@ export const productionRules = [
     if (payload.productType === "fish_harvest" && payload.fishHarvestType !== "sample" && Number(payload.fishHarvestCount || 0) < 1) throw new Error("Enter the confirmed number of fish removed");
     return true;
   })
+];
+
+export const removalRules = [
+  body("reason").isIn([...outgoingReasons]).withMessage("Choose a valid removal reason"),
+  body("quantity").isFloat({ gt: 0 }).withMessage("Quantity must be greater than zero"),
+  body("movementDate").optional({ values: "falsy" }).isISO8601().withMessage("Enter a valid date"),
+  body("idempotencyKey").trim().notEmpty().isLength({ max: 120 }).withMessage("A valid submission key is required"),
+  body("notes").optional({ values: "falsy" }).trim().isLength({ max: 2000 })
+];
+
+export const reversalRules = [
+  body("reason").trim().isLength({ min: 3, max: 500 }).withMessage("Enter a reversal reason")
+];
+
+export const transferRules = [
+  body("storageLocation").trim().notEmpty().isLength({ max: 160 }).withMessage("Enter the new storage location"),
+  body("movementDate").optional({ values: "falsy" }).isISO8601().withMessage("Enter a valid transfer date"),
+  body("idempotencyKey").trim().notEmpty().isLength({ max: 120 }).withMessage("A valid submission key is required")
 ];
 
 function cleanText(value, max = 3000) {
@@ -137,6 +158,8 @@ async function applyFishHarvest(record, source) {
 
 export async function createProductionRecord(req, res, next) {
   let record;
+  let fishEvent;
+  let fishSource;
   try {
     const source = await resolveSource(req.user._id, req.body.sourceType, req.body.sourceId);
     if (!source) return res.status(400).json({ message: "Production source was not found for this farm" });
@@ -150,14 +173,20 @@ export async function createProductionRecord(req, res, next) {
       return res.status(400).json({ message: "Fish harvest must use a fish group, pond, tank, or cage" });
     }
     record = await ProductionRecord.create(productionPayload(req.body, source, req.user._id));
-    const event = req.body.productType === "fish_harvest" ? await applyFishHarvest(record, source.source) : null;
-    if (event) {
-      record.groupQuantityEvent = event._id;
+    fishSource = req.body.productType === "fish_harvest" ? source.source : null;
+    fishEvent = fishSource ? await applyFishHarvest(record, fishSource) : null;
+    if (fishEvent) {
+      record.groupQuantityEvent = fishEvent._id;
       await record.save();
     }
+    await addProductionToInventory(record);
     res.status(201).json(record);
   } catch (error) {
-    if (record?._id && !record.groupQuantityEvent) await ProductionRecord.deleteOne({ _id: record._id, user: req.user._id });
+    if (fishEvent && fishSource) {
+      await AnimalGroup.updateOne({ _id: fishSource._id, user: req.user._id }, { $inc: { currentQuantity: Number(record.fishHarvestCount || 0) } }).catch(() => {});
+      await GroupQuantityEvent.deleteOne({ _id: fishEvent._id, user: req.user._id }).catch(() => {});
+    }
+    if (record?._id && !record.inventoryMovement) await ProductionRecord.deleteOne({ _id: record._id, user: req.user._id }).catch(() => {});
     if (error.code === 11000) return res.status(409).json({ message: "This production batch already exists" });
     if (/exceeds/.test(error.message)) return res.status(409).json({ message: error.message });
     next(error);
@@ -188,7 +217,9 @@ function listQuery(req) {
 
 export async function listProductionRecords(req, res, next) {
   try {
-    res.json(await ProductionRecord.find(listQuery(req)).sort({ productionDate: -1, createdAt: -1 }).limit(500));
+    const records = await ProductionRecord.find(listQuery(req)).sort({ productionDate: -1, createdAt: -1 }).limit(500).lean();
+    const availability = await availabilityMap(records, req.user._id);
+    res.json(records.map((record) => ({ ...record, availableQuantity: availability.get(String(record._id)) || 0 })));
   } catch (error) { next(error); }
 }
 
@@ -196,8 +227,123 @@ export async function getProductionRecord(req, res, next) {
   try {
     const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id });
     if (!record) return res.status(404).json({ message: "Production record not found" });
-    res.json(record);
+    const [availability, movements] = await Promise.all([
+      productionAvailability(record, req.user._id),
+      StockMovement.find({ user: req.user._id, productionRecord: record._id }).sort({ movementDate: -1, createdAt: -1 })
+    ]);
+    res.json({ ...record.toObject(), availableQuantity: availability.available, movements });
   } catch (error) { next(error); }
+}
+
+async function availabilityMap(records, user) {
+  if (!records.length) return new Map();
+  const rows = await StockMovement.aggregate([
+    { $match: { user, productionRecord: { $in: records.map((record) => record._id) } } },
+    { $group: { _id: "$productionRecord", available: { $sum: "$quantityChange" } } }
+  ]);
+  return new Map(rows.map((row) => [String(row._id), row.available]));
+}
+
+export async function availableProduce(req, res, next) {
+  try {
+    const records = await ProductionRecord.find({ user: req.user._id, status: "active", inventoryMovement: { $ne: null } }).lean();
+    records.sort((a, b) => (a.expiryDate ? new Date(a.expiryDate).getTime() : Number.MAX_SAFE_INTEGER) - (b.expiryDate ? new Date(b.expiryDate).getTime() : Number.MAX_SAFE_INTEGER) || new Date(a.productionDate) - new Date(b.productionDate));
+    const availability = await availabilityMap(records, req.user._id);
+    res.json(records.map((record) => ({ ...record, availableQuantity: availability.get(String(record._id)) || 0 })).filter((record) => record.availableQuantity > 0));
+  } catch (error) { next(error); }
+}
+
+export async function listProductionRemovals(req, res, next) {
+  try {
+    const movements = await StockMovement.find({
+      user: req.user._id, productionRecord: { $ne: null }, quantityChange: { $lt: 0 }, productionRemovalReason: { $in: [...outgoingReasons] }
+    }).populate("productionRecord", "batchReference productName baseUnit sourceLabel").sort({ movementDate: -1, createdAt: -1 }).limit(500);
+    res.json(movements);
+  } catch (error) { next(error); }
+}
+
+export async function updateProductionRecord(req, res, next) {
+  try {
+    const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id }).select("+stockVersion");
+    if (!record) return res.status(404).json({ message: "Production record not found" });
+    if (record.status !== "active") return res.status(409).json({ message: "Reversed production cannot be edited" });
+    const immutableChecks = [["productType", record.productType], ["sourceType", record.sourceType], ["sourceId", String(record.sourceId || "")], ["baseUnit", record.baseUnit], ["productName", record.productName], ["productionDate", new Date(record.productionDate).toISOString().slice(0, 10)]];
+    const changed = immutableChecks.find(([field, value]) => String(req.body[field] || "") !== String(value));
+    if (changed) return res.status(409).json({ message: `${changed[0]} cannot change after produce enters Inventory` });
+    if (record.productType === "fish_harvest" && Number(req.body.fishHarvestCount || 0) !== Number(record.fishHarvestCount || 0)) {
+      return res.status(409).json({ message: "Confirmed fish count cannot change after the group quantity event" });
+    }
+    const newSellable = calculateSellableQuantity(req.body);
+    if (record.inventoryMovement) await updateProductionInventory(record, newSellable);
+    const mutable = productionPayload(req.body, { sourceId: record.sourceId, sourceModel: record.sourceModel, sourceLabel: record.sourceLabel }, req.user._id);
+    for (const field of ["session", "quantityProduced", "quantityDamaged", "quantityRejected", "quantityUsedInternally", "quantityReserved", "quantityFedToYoung", "quantitySellable", "storageLocation", "expiryDate", "qualityGrade", "qualityNotes", "fishHarvestType", "totalHarvestedWeight", "averageWeight", "averageWeightUnit", "notes"]) record[field] = mutable[field];
+    await record.save();
+    if (!record.inventoryMovement && newSellable > 0) await addProductionToInventory(record);
+    res.json({ ...record.toObject(), availableQuantity: (await productionAvailability(record, req.user._id)).available });
+  } catch (error) { next(error); }
+}
+
+export async function createProductionRemoval(req, res, next) {
+  try {
+    const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id, status: "active" }).select("+stockVersion");
+    if (!record) return res.status(404).json({ message: "Active production batch not found" });
+    if (!record.inventoryMovement || !record.inventoryItem) return res.status(409).json({ message: "This batch is not linked to Inventory" });
+    const movement = await removeProductionStock(record, { ...req.body, createdBy: req.user._id });
+    res.status(201).json({ movement, availableQuantity: (await productionAvailability(record, req.user._id)).available });
+  } catch (error) { next(error); }
+}
+
+export async function transferProductionRecord(req, res, next) {
+  try {
+    const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id, status: "active" }).select("+stockVersion");
+    if (!record) return res.status(404).json({ message: "Active production batch not found" });
+    if (!record.inventoryMovement || !record.inventoryItem) return res.status(409).json({ message: "This batch is not linked to Inventory" });
+    await transferProductionStorage(record, { ...req.body, createdBy: req.user._id });
+    res.json({ ...record.toObject(), availableQuantity: (await productionAvailability(record, req.user._id)).available });
+  } catch (error) { next(error); }
+}
+
+export async function reverseProductionRecord(req, res, next) {
+  let restoredFishGroup;
+  let fishReversalEvent;
+  let fishRestoredCount = 0;
+  let inventoryReversal;
+  let inventoryReversalExisted = false;
+  try {
+    const record = await ProductionRecord.findOne({ _id: req.params.id, user: req.user._id, status: "active" }).select("+stockVersion");
+    if (!record) return res.status(404).json({ message: "Active production batch not found" });
+    if (record.groupQuantityEvent && Number(record.fishHarvestCount || 0) > 0) {
+      const idempotencyKey = `production-reversal-${record._id}`;
+      fishReversalEvent = await GroupQuantityEvent.findOne({ user: req.user._id, group: record.sourceId, idempotencyKey });
+      if (!fishReversalEvent) {
+        restoredFishGroup = await AnimalGroup.findOneAndUpdate({ _id: record.sourceId, user: req.user._id }, { $inc: { currentQuantity: record.fishHarvestCount } }, { new: true });
+        if (!restoredFishGroup) return res.status(409).json({ message: "Fish group could not be restored" });
+        try {
+          fishReversalEvent = await GroupQuantityEvent.create({ user: req.user._id, group: restoredFishGroup._id, eventType: "added", quantity: record.fishHarvestCount, quantityDelta: record.fishHarvestCount, balanceAfter: restoredFishGroup.currentQuantity, eventDate: new Date(), reason: "Production harvest reversed", notes: req.body.reason, createdBy: req.user._id, idempotencyKey });
+          fishRestoredCount = Number(record.fishHarvestCount);
+        } catch (error) {
+          await AnimalGroup.updateOne({ _id: restoredFishGroup._id, user: req.user._id }, { $inc: { currentQuantity: -record.fishHarvestCount } });
+          restoredFishGroup = null;
+          throw error;
+        }
+      }
+    }
+    if (record.inventoryMovement) inventoryReversalExisted = Boolean(await StockMovement.exists({ user: req.user._id, sourceKey: `production:${record._id}:reversal` }));
+    inventoryReversal = record.inventoryMovement ? await reverseProductionInventory(record, req.body.reason, req.user._id) : null;
+    record.status = "reversed"; record.reversalReason = req.body.reason; record.reversedAt = new Date(); record.reversedBy = req.user._id; record.reversalMovement = inventoryReversal?._id || null;
+    await record.save();
+    res.json(record);
+  } catch (error) {
+    if (inventoryReversal && !inventoryReversalExisted) {
+      await InventoryItem.updateOne({ _id: inventoryReversal.item, user: req.user._id }, { $inc: { currentQuantity: Number(inventoryReversal.quantity) } }).catch(() => {});
+      await StockMovement.deleteOne({ _id: inventoryReversal._id, user: req.user._id }).catch(() => {});
+    }
+    if (restoredFishGroup && fishReversalEvent) {
+      await AnimalGroup.updateOne({ _id: restoredFishGroup._id, user: req.user._id }, { $inc: { currentQuantity: -fishRestoredCount } }).catch(() => {});
+      await GroupQuantityEvent.deleteOne({ _id: fishReversalEvent._id, user: req.user._id }).catch(() => {});
+    }
+    next(error);
+  }
 }
 
 export async function productionOverview(req, res, next) {
@@ -218,7 +364,15 @@ export async function productionOverview(req, res, next) {
       } },
       { $sort: { "_id.productType": 1, "_id.baseUnit": 1 } }
     ]);
-    const recent = await ProductionRecord.find({ user: req.user._id }).sort({ productionDate: -1, createdAt: -1 }).limit(6);
-    res.json({ totalsByUnit: rows.map((row) => ({ productType: row._id.productType, baseUnit: row._id.baseUnit, ...row, _id: undefined })), recent });
+    const recent = await ProductionRecord.find({ user: req.user._id }).sort({ productionDate: -1, createdAt: -1 }).limit(6).lean();
+    const availability = await availabilityMap(recent, req.user._id);
+    const inventoryByUnit = await StockMovement.aggregate([
+      { $match: { user: req.user._id, productionRecord: { $ne: null } } },
+      { $lookup: { from: "productionrecords", localField: "productionRecord", foreignField: "_id", as: "production" } },
+      { $unwind: "$production" }, { $match: { "production.status": "active" } },
+      { $group: { _id: { productType: "$production.productType", baseUnit: "$production.baseUnit" }, available: { $sum: "$quantityChange" } } }
+    ]);
+    const availableLookup = new Map(inventoryByUnit.map((item) => [`${item._id.productType}:${item._id.baseUnit}`, item.available]));
+    res.json({ totalsByUnit: rows.map((row) => ({ productType: row._id.productType, baseUnit: row._id.baseUnit, ...row, available: availableLookup.get(`${row._id.productType}:${row._id.baseUnit}`) || 0, _id: undefined })), recent: recent.map((record) => ({ ...record, availableQuantity: availability.get(String(record._id)) || 0 })) });
   } catch (error) { next(error); }
 }

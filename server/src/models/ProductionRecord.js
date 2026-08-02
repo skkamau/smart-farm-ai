@@ -41,13 +41,15 @@ const productionRecordSchema = new mongoose.Schema(
     averageWeightUnit: { type: String, enum: ["g", "kg"], default: "kg" },
     inventoryItem: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem", default: null },
     inventoryMovement: { type: mongoose.Schema.Types.ObjectId, ref: "StockMovement", default: null },
+    reversalMovement: { type: mongoose.Schema.Types.ObjectId, ref: "StockMovement", default: null },
     groupQuantityEvent: { type: mongoose.Schema.Types.ObjectId, ref: "GroupQuantityEvent", default: null },
     notes: { type: String, trim: true, maxlength: 3000, default: "" },
     status: { type: String, enum: ["active", "reversed"], default: "active", index: true },
     reversalReason: { type: String, trim: true, maxlength: 500, default: "" },
     reversedAt: { type: Date, default: null },
     reversedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    stockVersion: { type: Number, min: 0, default: 0, select: false }
   },
   { timestamps: true }
 );

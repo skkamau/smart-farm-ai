@@ -22,6 +22,7 @@ const inventoryItemSchema = new mongoose.Schema(
     notes: { type: String, trim: true, maxlength: 2000 },
     archivedAt: { type: Date, default: null, index: true },
     legacyKey: { type: String, default: null },
+    produceKey: { type: String, trim: true, default: null },
     legacyTransactionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Transaction" }]
   },
   { timestamps: true }
@@ -29,5 +30,6 @@ const inventoryItemSchema = new mongoose.Schema(
 
 inventoryItemSchema.index({ user: 1, name: 1, archivedAt: 1 });
 inventoryItemSchema.index({ user: 1, legacyKey: 1 }, { unique: true, sparse: true });
+inventoryItemSchema.index({ user: 1, produceKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("InventoryItem", inventoryItemSchema);

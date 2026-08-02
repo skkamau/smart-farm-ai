@@ -8,6 +8,7 @@ import { migrateAnimalStatuses } from "./services/animalStatusMigration.js";
 import { migrateHealthConditions } from "./services/healthConditionMigration.js";
 import { migrateUnknownAnimalGenders } from "./services/animalGenderMigration.js";
 import { migrateLegacyInventory } from "./services/inventoryMigration.js";
+import { migrateProductionInventory } from "./services/productionInventoryMigration.js";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import animalRoutes from "./routes/animalRoutes.js";
@@ -87,6 +88,7 @@ connectDB()
     await migrateUnknownAnimalGenders();
     await migrateHealthConditions();
     await migrateLegacyInventory();
+    await migrateProductionInventory();
     app.listen(port, host, () => console.log(`API running on http://${host}:${port}`));
   })
   .catch((error) => {
