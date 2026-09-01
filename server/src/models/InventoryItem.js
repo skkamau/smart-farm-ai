@@ -21,15 +21,25 @@ const inventoryItemSchema = new mongoose.Schema(
     expiryDate: { type: Date, default: null },
     notes: { type: String, trim: true, maxlength: 2000 },
     archivedAt: { type: Date, default: null, index: true },
-    legacyKey: { type: String, default: null },
-    produceKey: { type: String, trim: true, default: null },
+    // These migration-only keys must be omitted when unused. A sparse unique
+    // index still indexes explicit null values, which blocked later items.
+    legacyKey: { type: String },
+    produceKey: { type: String, trim: true },
     legacyTransactionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Transaction" }]
   },
   { timestamps: true }
 );
 
 inventoryItemSchema.index({ user: 1, name: 1, archivedAt: 1 });
-inventoryItemSchema.index({ user: 1, legacyKey: 1 }, { unique: true, sparse: true });
-inventoryItemSchema.index({ user: 1, produceKey: 1 }, { unique: true, sparse: true });
+// Only real migration keys participate in uniqueness. Sparse indexes include
+// explicit null values, which would otherwise allow just one normal item per user.
+inventoryItemSchema.index(
+  { user: 1, legacyKey: 1 },
+  { unique: true, partialFilterExpression: { legacyKey: { $type: "string" } } }
+);
+inventoryItemSchema.index(
+  { user: 1, produceKey: 1 },
+  { unique: true, partialFilterExpression: { produceKey: { $type: "string" } } }
+);
 
 export default mongoose.model("InventoryItem", inventoryItemSchema);

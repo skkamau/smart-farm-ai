@@ -91,7 +91,7 @@ try {
   assert.equal(ProductionRecord.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.batchReference === 1 && options.unique), true, "production batch references must be unique per owner");
   assert.equal(ProductionRecord.schema.path("inventoryMovement").instance, "ObjectId", "production must link to its one inventory addition");
   assert.equal(ProductionRecord.schema.path("stockVersion").options.select, false, "production stock locks must not be exposed by default");
-  assert.equal(InventoryItem.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.produceKey === 1 && options.unique && options.sparse), true, "matching produce inventory items must be reused safely");
+  assert.equal(InventoryItem.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.produceKey === 1 && options.unique && options.partialFilterExpression?.produceKey?.$type === "string"), true, "matching produce inventory items must be reused safely without indexing unused keys");
   assert.equal(StockMovement.schema.indexes().some(([fields, options]) => fields.user === 1 && fields.sourceKey === 1 && options.unique && options.sparse), true, "production stock movements must be idempotent per owner");
   assert.equal(StockMovement.schema.path("productionRecord").instance, "ObjectId", "stock movements must link back to production batches");
   assert.equal(productionProduceKey({ productName: " Table Eggs ", baseUnit: "egg" }), "table eggs::egg", "produce matching keys must be stable");

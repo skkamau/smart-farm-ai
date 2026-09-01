@@ -8,6 +8,7 @@ import { migrateAnimalStatuses } from "./services/animalStatusMigration.js";
 import { migrateHealthConditions } from "./services/healthConditionMigration.js";
 import { migrateUnknownAnimalGenders } from "./services/animalGenderMigration.js";
 import { migrateLegacyInventory } from "./services/inventoryMigration.js";
+import { migrateInventoryOptionalKeyIndexes } from "./services/inventoryIndexMigration.js";
 import { migrateProductionInventory } from "./services/productionInventoryMigration.js";
 import { allowedOrigins, isLocalNetworkOrigin, validateEnv } from "./config/env.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -86,6 +87,7 @@ app.use(errorHandler);
 
 connectDB()
   .then(async () => {
+    await migrateInventoryOptionalKeyIndexes();
     await migrateAnimalStatuses();
     await migrateUnknownAnimalGenders();
     await migrateHealthConditions();
