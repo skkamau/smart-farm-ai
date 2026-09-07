@@ -1,6 +1,8 @@
 import axios from "axios";
 import { storageGet, storageRemove } from "../utils/storage";
 
+const productionApiUrl = "https://smart-farm-ai-api.onrender.com/api";
+
 export function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_URL;
   if (configured && configured !== "auto") return configured;
@@ -9,9 +11,7 @@ export function resolveApiBaseUrl() {
     const host = window.location.hostname;
     const isLocalHost = host === "localhost" || host === "127.0.0.1";
     const isLocalNetwork = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host);
-    // In production Vercel proxies /api to Render. This prevents browser
-    // extensions or network filters from blocking the onrender.com hostname.
-    if (!isLocalHost && !isLocalNetwork) return "/api";
+    if (!isLocalHost && !isLocalNetwork) return productionApiUrl;
   }
 
   return "/api";
